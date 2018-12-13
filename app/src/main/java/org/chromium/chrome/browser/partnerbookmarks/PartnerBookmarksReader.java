@@ -5,8 +5,8 @@
 package org.chromium.chrome.browser.partnerbookmarks;
 
 import android.content.Context;
-import android.os.AsyncTask;
 
+import org.chromium.base.AsyncTask;
 import org.chromium.base.Log;
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.metrics.RecordHistogram;
@@ -124,7 +124,7 @@ public class PartnerBookmarksReader {
             assert false : "readBookmarks called after nativeDestroy.";
             return;
         }
-        new ReadBookmarksTask().execute();
+        new ReadBookmarksTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
     /**
@@ -218,11 +218,11 @@ public class PartnerBookmarksReader {
     }
 
     /** Handles fetching partner bookmarks in a background thread. */
-    private class ReadBookmarksTask extends AsyncTask<Void, Void, Void> {
+    private class ReadBookmarksTask extends AsyncTask<Void> {
         private final Object mRootSync = new Object();
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Void doInBackground() {
             if (mFaviconThrottle == null) {
                 // Initialize the throttle here since we need to load shared preferences on the
                 // background thread as well.

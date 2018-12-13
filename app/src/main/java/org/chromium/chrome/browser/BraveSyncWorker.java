@@ -9,7 +9,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
-import android.os.AsyncTask;
+import org.chromium.base.AsyncTask;
 import android.os.Build;
 import android.os.Looper;
 import android.util.Base64;
@@ -35,9 +35,9 @@ import org.chromium.content_public.browser.JavascriptInjector;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.LoadUrlParams;
 import java.util.Scanner;
-import org.chromium.components.content_view.ContentView;
-import org.chromium.content_public.browser.ContentViewCore;
-import org.chromium.content.browser.ContentViewCoreImpl;
+import org.chromium.components.embedder_support.view.ContentView;
+import org.chromium.content_public.browser.ViewEventSink;
+import org.chromium.content.browser.ViewEventSinkImpl;
 import org.chromium.chrome.browser.ChromeVersionInfo;
 import org.chromium.ui.base.ViewAndroidDelegate;
 
@@ -114,10 +114,10 @@ public class BraveSyncWorker {
 
     private WebContents mWebContents = null;
     private JavascriptInjector mWebContentsInjector = null;
-    private ContentViewCore mContentViewCore = null;
+    private ViewEventSinkImpl mViewEventSink = null;
     private WebContents mJSWebContents = null;
     private JavascriptInjector mJSWebContentsInjector = null;
-    private ContentViewCore mJSContentViewCore = null;
+    private ViewEventSinkImpl mJSViewEventSink = null;
 
     enum NotSyncedRecordsOperation {
         GetItems, AddItems, DeleteItems
@@ -291,9 +291,9 @@ public class BraveSyncWorker {
         }
         final BookmarkItem[] bookmarksFinal = bookmarks;
 
-        new AsyncTask<String, Void, Void>() {
+        new AsyncTask<Void>() {
             @Override
-            protected Void doInBackground(String... params) {
+            protected Void doInBackground() {
                 if (!mSyncIsReady.IsReady()) {
                     return null;
                 }
@@ -601,19 +601,15 @@ public class BraveSyncWorker {
                 if (null != mWebContents) {
                     mWebContents.destroy();
                 }
-                if (null != mContentViewCore) {
-                    mContentViewCore.destroy();
-                }
                 mWebContents = null;
-                mContentViewCore = null;
+                mViewEventSink = null;
                 mShouldResetSync = false;
             }
             if (null == mWebContents) {
                 mWebContents = WebContentsFactory.createWebContents(false, true);
                 if (null != mWebContents) {
-                    ContentView cv = ContentView.createContentView((ChromeActivity)mContext, mWebContents);
-                    mContentViewCore = ContentViewCore.create(mContext, ChromeVersionInfo.getProductVersion(), mWebContents, ViewAndroidDelegate.createBasicDelegate(cv), cv, ((ChromeActivity)mContext).getWindowAndroid());
-                    if (null != mContentViewCore) {
+                    mViewEventSink = ViewEventSinkImpl.from(mWebContents);
+                    if (null != mViewEventSink) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                             initContenViewCore();
                         } else {
@@ -2206,9 +2202,8 @@ public class BraveSyncWorker {
             if (null == mJSWebContents) {
                 mJSWebContents = WebContentsFactory.createWebContents(false, true);
                 if (null != mJSWebContents) {
-                    ContentView cv = ContentView.createContentView((ChromeActivity)mContext, mJSWebContents);
-                    mJSContentViewCore = ContentViewCore.create(mContext, ChromeVersionInfo.getProductVersion(), mJSWebContents, ViewAndroidDelegate.createBasicDelegate(cv), cv, ((ChromeActivity)mContext).getWindowAndroid());
-                    if (null != mJSContentViewCore) {
+                    mJSViewEventSink = ViewEventSinkImpl.from(mJSWebContents);
+                    if (null != mJSViewEventSink) {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                             initJSContenViewCore();
                         } else {

@@ -42,11 +42,14 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 /** Queries the user's default search engine and shows autocomplete suggestions. */
 public class SearchActivity extends AsyncInitializationActivity
         implements SnackbarManageable, SearchActivityLocationBarLayout.Delegate {
+    // Shared with other org.chromium.chrome.browser.searchwidget classes.
+    protected static final String TAG = "searchwidget";
+
     /** Notified about events happening inside a SearchActivity. */
     public static class SearchActivityDelegate {
         /**
-         * Called when {@link SearchActivity#setContentView} is deciding whether to continue loading
-         * the native library immediately.
+         * Called when {@link SearchActivity#triggerLayoutInflation} is deciding whether to continue
+         * loading the native library immediately.
          * @return Whether or not native initialization should proceed immediately.
          */
         boolean shouldDelayNativeInitialization() {
@@ -73,7 +76,6 @@ public class SearchActivity extends AsyncInitializationActivity
         }
     }
 
-    private static final String TAG = "searchwidget";
     private static final Object DELEGATE_LOCK = new Object();
 
     /** Notified about events happening for the SearchActivity. */
@@ -117,7 +119,7 @@ public class SearchActivity extends AsyncInitializationActivity
     }
 
     @Override
-    protected void setContentView() {
+    protected void triggerLayoutInflation() {
         mSnackbarManager = new SnackbarManager(this, null);
         mSearchBoxDataProvider = new SearchBoxDataProvider();
 
@@ -144,6 +146,7 @@ public class SearchActivity extends AsyncInitializationActivity
                 }
             });
         }
+        onInitialLayoutInflationComplete();
     }
 
     @Override
@@ -191,6 +194,9 @@ public class SearchActivity extends AsyncInitializationActivity
         if (mQueuedUrl != null) loadUrl(mQueuedUrl);
 
         AutocompleteController.nativePrefetchZeroSuggestResults();
+        // TODO(tedchoc): Warmup triggers the CustomTab layout to be inflated, but this widget
+        //                will navigate to Tabbed mode.  Investigate whether this can inflate
+        //                the tabbed mode layout in the background instead of CCTs.
         CustomTabsConnection.getInstance().warmup(0);
         mSearchBox.onDeferredStartup(isVoiceSearchIntent());
         RecordUserAction.record("SearchWidget.WidgetSelected");

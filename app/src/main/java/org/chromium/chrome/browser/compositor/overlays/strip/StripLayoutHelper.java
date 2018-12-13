@@ -13,6 +13,7 @@ import android.content.res.Resources;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
+import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
 import android.text.TextUtils;
 import android.view.MotionEvent;
@@ -25,6 +26,7 @@ import android.widget.ListPopupWindow;
 
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeFeatureList;
 import org.chromium.chrome.browser.compositor.animation.CompositorAnimator;
 import org.chromium.chrome.browser.compositor.layouts.LayoutRenderHost;
 import org.chromium.chrome.browser.compositor.layouts.LayoutUpdateHost;
@@ -196,10 +198,12 @@ public class StripLayoutHelper implements StripLayoutTab.StripLayoutTabDelegate 
 
         // Create tab menu
         mTabMenu = new ListPopupWindow(mContext);
+        boolean userAlternativeIncognitoStrings = ChromeFeatureList.isInitialized()
+                && ChromeFeatureList.isEnabled(ChromeFeatureList.INCOGNITO_STRINGS);
         mTabMenu.setAdapter(new ArrayAdapter<String>(mContext, R.layout.list_menu_item,
-                new String[] {
-                        mContext.getString(!mIncognito ? R.string.menu_close_all_tabs
-                                                       : R.string.brave_close_all_private_tabs)}));
+                new String[] {mContext.getString(!mIncognito
+                                ? R.string.menu_close_all_tabs
+                                : R.string.brave_close_all_private_tabs)}));
         mTabMenu.setOnItemClickListener(new OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -1073,6 +1077,7 @@ public class StripLayoutHelper implements StripLayoutTab.StripLayoutTabDelegate 
      * @return The StripLayoutTab that corresponds to that tabid.
      */
     @VisibleForTesting
+    @Nullable
     public StripLayoutTab findTabById(int id) {
         if (mStripTabs == null) return null;
         for (int i = 0; i < mStripTabs.length; i++) {
@@ -1645,7 +1650,7 @@ public class StripLayoutHelper implements StripLayoutTab.StripLayoutTabDelegate 
         if (selectedTab == null) return;
 
         StripLayoutTab selectedLayoutTab = findTabById(selectedTab.getId());
-        if (isSelectedTabCompletelyVisible(selectedLayoutTab)) return;
+        if (selectedLayoutTab == null || isSelectedTabCompletelyVisible(selectedLayoutTab)) return;
 
         float delta = calculateOffsetToMakeTabVisible(selectedLayoutTab, true, true, true);
         setScrollForScrollingTabStacker(delta, animate, time);
@@ -1764,9 +1769,14 @@ public class StripLayoutHelper implements StripLayoutTab.StripLayoutTabDelegate 
 
         @StringRes int resId;
         if (mIncognito) {
-            resId = isHidden
-                        ? R.string.prefs_private_search_engine
-                        : R.string.accessibility_tabstrip_incognito_identifier_selected;
+            if (ChromeFeatureList.isInitialized()
+                    && ChromeFeatureList.isEnabled(ChromeFeatureList.INCOGNITO_STRINGS)) {
+                resId = isHidden ? R.string.accessibility_tabstrip_private_identifier
+                                 : R.string.accessibility_tabstrip_private_identifier_selected;
+            } else {
+                resId = isHidden ? R.string.accessibility_tabstrip_incognito_identifier
+                                 : R.string.accessibility_tabstrip_incognito_identifier_selected;
+            }
         } else {
             resId = isHidden
                         ? R.string.accessibility_tabstrip_identifier

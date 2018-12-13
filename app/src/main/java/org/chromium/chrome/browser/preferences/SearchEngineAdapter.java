@@ -33,8 +33,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ContentSettingsType;
 import org.chromium.chrome.browser.locale.LocaleManager;
 import org.chromium.chrome.browser.preferences.website.ContentSetting;
-import org.chromium.chrome.browser.preferences.website.GeolocationInfo;
-import org.chromium.chrome.browser.preferences.website.NotificationInfo;
+import org.chromium.chrome.browser.preferences.website.PermissionInfo;
 import org.chromium.chrome.browser.preferences.website.SingleWebsitePreferences;
 import org.chromium.chrome.browser.preferences.website.WebsitePreferenceBridge;
 import org.chromium.chrome.browser.search_engines.TemplateUrl;
@@ -71,12 +70,14 @@ public class SearchEngineAdapter extends BaseAdapter
      * Type for source of search engine. This is needed because if a custom search engine is set as
      * default, it will be moved to the prepopulated list.
      */
-    @IntDef({TYPE_DEFAULT, TYPE_PREPOPULATED, TYPE_RECENT})
+    @IntDef({TemplateUrlSourceType.DEFAULT, TemplateUrlSourceType.PREPOPULATED,
+            TemplateUrlSourceType.RECENT})
     @Retention(RetentionPolicy.SOURCE)
-    public @interface TemplateUrlSourceType {}
-    public static final int TYPE_DEFAULT = 0;
-    public static final int TYPE_PREPOPULATED = 1;
-    public static final int TYPE_RECENT = 2;
+    public @interface TemplateUrlSourceType {
+        int DEFAULT = 0;
+        int PREPOPULATED = 1;
+        int RECENT = 2;
+    }
 
     /** The current context. */
     private Context mContext;
@@ -196,7 +197,7 @@ public class SearchEngineAdapter extends BaseAdapter
         for (int i = 0; i < templateUrls.size(); i++) {
             TemplateUrl templateUrl = templateUrls.get(i);
             if (getSearchEngineSourceType(templateUrl, defaultSearchEngineTemplateUrl)
-                    == TYPE_RECENT) {
+                    == TemplateUrlSourceType.RECENT) {
                 mRecentSearchEngines.add(templateUrl);
             } else {
                 mPrepopulatedSearchEngines.add(templateUrl);
@@ -256,7 +257,8 @@ public class SearchEngineAdapter extends BaseAdapter
         Iterator<TemplateUrl> iterator = templateUrls.iterator();
         while (iterator.hasNext()) {
             TemplateUrl templateUrl = iterator.next();
-            if (getSearchEngineSourceType(templateUrl, defaultSearchEngine) != TYPE_RECENT) {
+            if (getSearchEngineSourceType(templateUrl, defaultSearchEngine)
+                    != TemplateUrlSourceType.RECENT) {
                 continue;
             }
             if (recentEngineNum < MAX_RECENT_ENGINE_NUM
@@ -271,11 +273,11 @@ public class SearchEngineAdapter extends BaseAdapter
     private static @TemplateUrlSourceType int getSearchEngineSourceType(
             TemplateUrl templateUrl, TemplateUrl defaultSearchEngine) {
         if (templateUrl.getIsPrepopulated()) {
-            return TYPE_PREPOPULATED;
+            return TemplateUrlSourceType.PREPOPULATED;
         } else if (templateUrl.equals(defaultSearchEngine)) {
-            return TYPE_DEFAULT;
+            return TemplateUrlSourceType.DEFAULT;
         } else {
-            return TYPE_RECENT;
+            return TemplateUrlSourceType.RECENT;
         }
     }
 
@@ -385,9 +387,7 @@ public class SearchEngineAdapter extends BaseAdapter
                             : R.layout.search_engine,
                     null);
         }
-        if (itemViewType == VIEW_TYPE_DIVIDER) {
-            return view;
-        }
+        if (itemViewType == VIEW_TYPE_DIVIDER) return view;
 
         view.setOnClickListener(this);
         view.setTag(position);
@@ -534,14 +534,14 @@ public class SearchEngineAdapter extends BaseAdapter
     private int getPermissionsLinkMessage(String url) {
         if (url == null) return 0;
 
-        NotificationInfo notificationSettings = new NotificationInfo(url, null, false);
-        boolean notificationsAllowed =
-                notificationSettings.getContentSetting() == ContentSetting.ALLOW
+        PermissionInfo settings =
+                new PermissionInfo(PermissionInfo.Type.NOTIFICATION, url, null, false);
+        boolean notificationsAllowed = settings.getContentSetting() == ContentSetting.ALLOW
                 && WebsitePreferenceBridge.isPermissionControlledByDSE(
                            ContentSettingsType.CONTENT_SETTINGS_TYPE_NOTIFICATIONS, url, false);
 
-        GeolocationInfo locationSettings = new GeolocationInfo(url, null, false);
-        boolean locationAllowed = locationSettings.getContentSetting() == ContentSetting.ALLOW
+        settings = new PermissionInfo(PermissionInfo.Type.GEOLOCATION, url, null, false);
+        boolean locationAllowed = settings.getContentSetting() == ContentSetting.ALLOW
                 && WebsitePreferenceBridge.isPermissionControlledByDSE(
                            ContentSettingsType.CONTENT_SETTINGS_TYPE_GEOLOCATION, url, false);
 
@@ -552,19 +552,16 @@ public class SearchEngineAdapter extends BaseAdapter
         if (locationAllowed && systemLocationAllowed) {
             if (notificationsAllowed) {
                 return R.string.search_engine_location_and_notifications_allowed;
-            } else {
-                return R.string.search_engine_location_allowed;
             }
+            return R.string.search_engine_location_allowed;
         }
 
-        // Cases where the user has allowed location for the site but it's disabled at the system
-        // level.
+        // Cases where the user has allowed location for the site
+        // but it's disabled at the system level.
         if (locationAllowed) {
-            if (notificationsAllowed) {
-                return R.string.search_engine_notifications_allowed_system_location_disabled;
-            } else {
-                return R.string.search_engine_system_location_disabled;
-            }
+            return notificationsAllowed
+                    ? R.string.search_engine_notifications_allowed_system_location_disabled
+                    : R.string.search_engine_system_location_disabled;
         }
 
         // Cases where the user has not allowed location.
@@ -577,8 +574,8 @@ public class SearchEngineAdapter extends BaseAdapter
         int message = getPermissionsLinkMessage(getSearchEngineUrl(templateUrl));
         if (message == 0) return;
 
-        ForegroundColorSpan linkSpan = new ForegroundColorSpan(
-                ApiCompatibilityUtils.getColor(mContext.getResources(), R.color.google_blue_700));
+        ForegroundColorSpan linkSpan = new ForegroundColorSpan(ApiCompatibilityUtils.getColor(
+                mContext.getResources(), R.color.default_text_color_link));
         link.setVisibility(View.VISIBLE);
         link.setOnClickListener(this);
 
@@ -599,18 +596,17 @@ public class SearchEngineAdapter extends BaseAdapter
         String url = getSearchEngineUrl(templateUrl);
         if (url.isEmpty()) return false;
 
-        GeolocationInfo locationSettings = new GeolocationInfo(url, null, false);
-        ContentSetting locationPermission = locationSettings.getContentSetting();
-        return locationPermission == ContentSetting.ALLOW;
+        PermissionInfo locationSettings =
+                new PermissionInfo(PermissionInfo.Type.GEOLOCATION, url, null, false);
+        return locationSettings.getContentSetting() == ContentSetting.ALLOW;
     }
 
     private int computeStartIndexForRecentSearchEngines() {
-        // If there are custom search engines to show, add 1 for showing the  "Recently visited"
-        // header.
+        // If there are custom search engines to show, add 1 for showing the
+        // "Recently visited" header.
         if (mRecentSearchEngines.size() > 0) {
             return mPrepopulatedSearchEngines.size() + 1;
-        } else {
-            return mPrepopulatedSearchEngines.size();
         }
+        return mPrepopulatedSearchEngines.size();
     }
 }

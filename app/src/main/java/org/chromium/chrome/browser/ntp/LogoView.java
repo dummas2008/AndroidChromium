@@ -26,7 +26,6 @@ import org.chromium.base.Log;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ntp.LogoBridge.Logo;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
-import org.chromium.chrome.browser.util.FeatureUtilities;
 import org.chromium.chrome.browser.widget.LoadingView;
 
 import java.lang.ref.WeakReference;
@@ -46,9 +45,6 @@ public class LogoView extends FrameLayout implements OnClickListener {
 
     // The default logo is shared across all NTPs.
     private static WeakReference<Bitmap> sDefaultLogo;
-
-    // The maximum internal bottom space for when the image is smaller than the view.
-    private final int mLogoMaxInternalSpaceBottom;
 
     // mLogo and mNewLogo are remembered for cross fading animation.
     private Bitmap mLogo;
@@ -108,9 +104,6 @@ public class LogoView extends FrameLayout implements OnClickListener {
      */
     public LogoView(Context context, AttributeSet attrs) {
         super(context, attrs);
-
-        mLogoMaxInternalSpaceBottom = getResources().getDimensionPixelSize(
-                R.dimen.ntp_logo_max_internal_space_bottom_modern);
 
         mLogoMatrix = new Matrix();
         mLogoIsDefault = true;
@@ -297,13 +290,8 @@ public class LogoView extends FrameLayout implements OnClickListener {
 
         int imageOffsetX = Math.round((width - imageWidth * scale) * 0.5f);
 
-        final int imageOffsetY;
         float whitespace = height - imageHeight * scale;
-        if (FeatureUtilities.isChromeHomeEnabled()) {
-            imageOffsetY = Math.max(0, (int) whitespace - mLogoMaxInternalSpaceBottom);
-        } else {
-            imageOffsetY = Math.round(whitespace * 0.5f);
-        }
+        int imageOffsetY = Math.round(whitespace * 0.5f);
 
         matrix.setScale(scale, scale);
         matrix.postTranslate(imageOffsetX, imageOffsetY);
@@ -318,9 +306,8 @@ public class LogoView extends FrameLayout implements OnClickListener {
         Bitmap defaultLogo = sDefaultLogo == null ? null : sDefaultLogo.get();
         /*if (defaultLogo == null) {
             defaultLogo = BitmapFactory.decodeResource(getResources(), R.drawable.google_logo);
-            sDefaultLogo = new WeakReference<Bitmap>(defaultLogo);
+            sDefaultLogo = new WeakReference<>(defaultLogo);
         }*/
-
         return defaultLogo;
     }
 

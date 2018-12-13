@@ -13,7 +13,7 @@ import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.chrome.browser.util.UrlUtilities;
-import org.chromium.content.browser.BrowserStartupController;
+import org.chromium.content_public.browser.BrowserStartupController;
 import org.chromium.content_public.browser.WebContents;
 
 import java.util.concurrent.TimeUnit;
@@ -40,10 +40,9 @@ public class ActivityTabStartupMetricsTracker {
                 .addStartupCompletedObserver(new BrowserStartupController.StartupCallback() {
                     @Override
                     public void onSuccess() {
-                        // Activity could have called finish and returned early during startup but
-                        // not have onDestroy called yet. The activity's TabModelSelector may not
-                        // have been initialized causing a crash. See https://crbug.com/847580
-                        if (mActivity.isActivityFinishing()) return;
+                        // The activity's TabModelSelector may not have been initialized yet
+                        // causing a crash. See https://crbug.com/847580
+                        if (!mActivity.areTabModelsInitialized()) return;
                         registerObservers();
                     }
 

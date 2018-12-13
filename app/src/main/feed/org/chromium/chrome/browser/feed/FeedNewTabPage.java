@@ -4,27 +4,15 @@
 
 package org.chromium.chrome.browser.feed;
 
-import android.view.View;
-import android.widget.FrameLayout;
-
-import org.chromium.chrome.browser.BasicNativePage;
 import org.chromium.chrome.browser.ChromeActivity;
-import org.chromium.chrome.browser.NativePageHost;
-import org.chromium.chrome.browser.UrlConstants;
-import org.chromium.chrome.browser.feed.action.FeedActionHandler;
-import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.suggestions.SuggestionsNavigationDelegateImpl;
+import org.chromium.chrome.browser.native_page.NativePageHost;
+import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 
 /**
  * Provides a new tab page that displays an interest feed rendered list of content suggestions.
  */
-public class FeedNewTabPage extends BasicNativePage {
-    private final FeedActionHandler mActionHandler;
-
-    private View mRootView;
-    private String mTitle;
-
+public class FeedNewTabPage extends NewTabPage {
     /**
      * Constructs a new FeedNewTabPage.
      * @param activity The containing {@link ChromeActivity}.
@@ -33,39 +21,14 @@ public class FeedNewTabPage extends BasicNativePage {
      */
     public FeedNewTabPage(ChromeActivity activity, NativePageHost nativePageHost,
             TabModelSelector tabModelSelector) {
-        super(activity, nativePageHost);
-
-        // Initialize Action Handler
-        Profile profile = nativePageHost.getActiveTab().getProfile();
-        SuggestionsNavigationDelegateImpl navigationDelegate =
-                new SuggestionsNavigationDelegateImpl(
-                        activity, profile, nativePageHost, tabModelSelector);
-        mActionHandler = new FeedActionHandler(navigationDelegate);
-        // TODO(huayinz): Pass the action handler into Stream.
+        super(activity, nativePageHost, tabModelSelector);
     }
 
-    @Override
-    protected void initialize(ChromeActivity activity, NativePageHost host) {
-        mRootView = new FrameLayout(activity);
-        mRootView.setLayoutParams(new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        // TODO(twellington): Add Stream to root view.
-
-        mTitle = activity.getResources().getString(org.chromium.chrome.R.string.button_new_tab);
-    }
-
-    @Override
-    public View getView() {
-        return mRootView;
-    }
-
-    @Override
-    public String getTitle() {
-        return mTitle;
-    }
-
-    @Override
-    public String getHost() {
-        return UrlConstants.NTP_HOST;
-    }
+    /**
+     * Configures the FeedNewTabPage for testing.
+     * @param inTestMode Whether test mode is enabled. If true, test implementations of Feed
+     *                   interfaces will be used to create the {@link FeedProcessScope}. If false,
+     *                   the FeedProcessScope will be reset.
+     */
+    public static void setInTestMode(boolean inTestMode) {}
 }

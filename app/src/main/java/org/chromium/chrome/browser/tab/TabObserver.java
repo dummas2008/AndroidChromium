@@ -10,7 +10,6 @@ import android.view.ContextMenu;
 
 import org.chromium.chrome.browser.TabLoadStatus;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
-import org.chromium.content_public.browser.ContentViewCore;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.common.BrowserControlsState;
@@ -144,7 +143,7 @@ public interface TabObserver {
     void onWebContentsSwapped(Tab tab, boolean didStartLoad, boolean didFinishLoad);
 
     /**
-     * Called when a context menu is shown for a {@link ContentViewCore} owned by a {@link Tab}.
+     * Called when a context menu is shown for a {@link WebContents} owned by a {@link Tab}.
      * @param tab  The notifying {@link Tab}.
      * @param menu The {@link ContextMenu} that is being shown.
      */

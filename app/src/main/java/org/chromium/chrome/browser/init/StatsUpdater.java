@@ -10,6 +10,7 @@ import android.net.NetworkInfo;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.os.Build;
 
 import java.util.Calendar;
 import java.io.BufferedInputStream;
@@ -40,10 +41,12 @@ import javax.net.ssl.TrustManagerFactory;
 
 import org.chromium.base.annotations.CalledByNative;
 import org.chromium.base.annotations.JNINamespace;
-import org.chromium.base.Log;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.Log;
+import org.chromium.base.ThreadUtils;
 import org.chromium.chrome.browser.ConfigAPIs;
 import org.chromium.chrome.browser.ChromeVersionInfo;
+import org.chromium.chrome.browser.search_engines.TemplateUrlService;
 import org.chromium.chrome.browser.util.DateUtils;
 import org.chromium.chrome.browser.util.PackageUtils;
 
@@ -125,6 +128,19 @@ public class StatsUpdater {
                     monthly = true;
                 }
 
+                String country = GetCurrentCountry();
+                if (country.equals("FR") || country.equals("DE")) {
+                    boolean setQwant = ContextUtils.getAppSharedPreferences().getBoolean(TemplateUrlService.PREF_SET_QWANT_SE, true) && firstRun;
+                    if (setQwant) {
+                        ContextUtils.getAppSharedPreferences().edit().putBoolean(TemplateUrlService.PREF_SET_QWANT_SE, false).apply();
+                        ContextUtils.getAppSharedPreferences().edit().putBoolean(TemplateUrlService.PREF_SHOW_DDG_OFFER, false).apply();
+                        ThreadUtils.runOnUiThread(() -> {
+                            TemplateUrlService.getInstance().setSearchEngine(TemplateUrlService.QWANT_SE_NAME, TemplateUrlService.QWANT_SE_KEYWORD, true);
+                            TemplateUrlService.getInstance().setSearchEngine(TemplateUrlService.QWANT_SE_NAME, TemplateUrlService.QWANT_SE_KEYWORD, false);
+                        });
+                    }
+                }
+
                 if ((firstRun && (null == mCustomHeaders)) || (!firstRun && daily)) {
                     // Update partner headers on daily basis and initially if they are not loaded with promo init call
                     StatsUpdater.UpdatePartnerHeaders(context);
@@ -189,6 +205,10 @@ public class StatsUpdater {
             ref = urpc;
         }
 
+        if (!ConfigAPIs.REFERRER_CODE.isEmpty()) {
+            ref = ConfigAPIs.REFERRER_CODE;
+        }
+
         String strQuery = String.format(SERVER_REQUEST, daily, weekly, monthly,
             versionNumber, firstRun, woi, ref);
 
@@ -198,7 +218,8 @@ public class StatsUpdater {
             try {
                 connection.setRequestMethod("GET");
                 connection.connect();
-                if (HttpURLConnection.HTTP_OK != connection.getResponseCode()) {
+                if (connection.getResponseCode() < HttpURLConnection.HTTP_OK/*200*/ ||
+                    connection.getResponseCode() >= HttpURLConnection.HTTP_MULT_CHOICE/*300*/) {
                     Log.e(TAG, "stat update error == " + connection.getResponseCode());
 
                     return false;
@@ -296,13 +317,6 @@ public class StatsUpdater {
                     JSONObject jsonRes = new JSONObject(sb.toString());
                     downloadId = jsonRes.getString("download_id");
                     SetDownloadId(context, downloadId);
-                    if (jsonRes.has("referral_code")) {
-                        String referralCode = jsonRes.getString("referral_code");
-                        if (urpc.equals(referralCode)) {
-                            // It is partner's program, it doesn't have finalization, so we set flag to stop further checks
-                            SetIsFinalized(context, "true");
-                        }
-                    }
                     if (jsonRes.has("offer_page_url")) {
                         String offerPageUrl = jsonRes.getString("offer_page_url");
                         SetPartnerOfferPage(offerPageUrl);
@@ -591,7 +605,7 @@ public class StatsUpdater {
     }
 
     public static String GetCustomHeaders() {
-        return mCustomHeaders;
+        return mCustomHeaders != null ? mCustomHeaders : "";
     }
 
     private static void SetCustomHeaders(String customHeaders) {
@@ -614,11 +628,8 @@ public class StatsUpdater {
         if (null == mCustomHeaders) {
             SharedPreferences sharedPref = ContextUtils.getApplicationContext().getSharedPreferences(PREF_NAME, 0);
             mCustomHeaders = sharedPref.getString(CUSTOM_HEADERS_NAME, null);
-            if (mCustomHeaders == null) {
-                mCustomHeaders = "";
-            }
         }
-        if (mCustomHeaders.isEmpty()) {
+        if (mCustomHeaders == null || mCustomHeaders.isEmpty()) {
             return "";
         }
         if (null == mCustomHeadersMap) {
@@ -713,6 +724,14 @@ public class StatsUpdater {
             Log.w(TAG, "WaitForUpdate was interrupted");
         } finally {
             mAvailable.release();
+        }
+    }
+
+    public static String GetCurrentCountry() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N){
+            return ContextUtils.getApplicationContext().getResources().getConfiguration().getLocales().get(0).getCountry();
+        } else{
+            return ContextUtils.getApplicationContext().getResources().getConfiguration().locale.getCountry();
         }
     }
 }

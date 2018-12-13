@@ -47,8 +47,8 @@ class FilterView {
                 if (mTabSelectedCallback == null) return;
 
                 @TabType
-                int tabType = tab.getPosition() == 0 ? FilterCoordinator.TAB_FILES
-                                                     : FilterCoordinator.TAB_PREFETCH;
+                int tabType = tab.getPosition() == 0 ? FilterCoordinator.TabType.FILES
+                                                     : FilterCoordinator.TabType.PREFETCH;
                 mTabSelectedCallback.onResult(tabType);
             }
         });
@@ -70,7 +70,7 @@ class FilterView {
 
     /** Sets which of the two tabs are selected based on {code selectedType}. */
     public void setTabSelected(@TabType int selectedType) {
-        int selectedIndex = selectedType == FilterCoordinator.TAB_FILES ? 0 : 1;
+        int selectedIndex = selectedType == FilterCoordinator.TabType.FILES ? 0 : 1;
         if (mTabsView.getSelectedTabPosition() == selectedIndex) return;
         mTabsView.getTabAt(selectedIndex).select();
     }
@@ -78,5 +78,10 @@ class FilterView {
     /** Sets the callback for when one of the tabs is selected. */
     public void setTabSelectedCallback(Callback</* @TabType */ Integer> callback) {
         mTabSelectedCallback = callback;
+    }
+
+    /** Sets whether or not we show the tabs. */
+    public void setShowTabs(boolean show) {
+        mTabsView.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 }

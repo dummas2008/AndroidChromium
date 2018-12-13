@@ -10,10 +10,10 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.AppTask;
 import android.app.ActivityManager.RecentTaskInfo;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.content.pm.ShortcutManager;
 import android.graphics.Color;
 import android.os.Build;
@@ -54,6 +54,8 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.init.StatsUpdater;
 import org.chromium.chrome.browser.IntentHandler.IntentHandlerDelegate;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
+import org.chromium.chrome.browser.appmenu.AppMenu;
+import org.chromium.chrome.browser.appmenu.AppMenuIconRowFooter;
 import org.chromium.chrome.browser.appmenu.AppMenuPropertiesDelegate;
 import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
 import org.chromium.chrome.browser.browseractions.BrowserActionsService;
@@ -69,19 +71,26 @@ import org.chromium.chrome.browser.compositor.layouts.phone.StackLayout;
 import org.chromium.chrome.browser.cookies.CookiesFetcher;
 import org.chromium.chrome.browser.crypto.CipherFactory;
 import org.chromium.chrome.browser.device.DeviceClassManager;
+import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.document.DocumentUtils;
 import org.chromium.chrome.browser.dom_distiller.ReaderModeManager;
 import org.chromium.chrome.browser.download.DownloadUtils;
 import org.chromium.chrome.browser.feature_engagement.ScreenshotMonitor;
 import org.chromium.chrome.browser.feature_engagement.ScreenshotMonitorDelegate;
+import org.chromium.chrome.browser.feature_engagement.ScreenshotTabObserver;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
+import org.chromium.chrome.browser.feed.FeedEventReporter;
 import org.chromium.chrome.browser.firstrun.FirstRunSignInProcessor;
 import org.chromium.chrome.browser.firstrun.FirstRunStatus;
 import org.chromium.chrome.browser.fullscreen.ChromeFullscreenManager;
 import org.chromium.chrome.browser.fullscreen.ComposedBrowserControlsVisibilityDelegate;
 import org.chromium.chrome.browser.incognito.IncognitoNotificationManager;
+import org.chromium.chrome.browser.incognito.IncognitoTabHost;
+import org.chromium.chrome.browser.incognito.IncognitoTabHostRegistry;
 import org.chromium.chrome.browser.incognito.IncognitoTabSnapshotController;
+import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.infobar.DataReductionPromoInfoBar;
+import org.chromium.chrome.browser.language.LanguageAskPrompt;
 import org.chromium.chrome.browser.locale.LocaleManager;
 import org.chromium.chrome.browser.metrics.ActivityStopMetrics;
 import org.chromium.chrome.browser.metrics.LaunchMetrics;
@@ -90,8 +99,8 @@ import org.chromium.chrome.browser.modaldialog.ModalDialogManager;
 import org.chromium.chrome.browser.modaldialog.TabModalLifetimeHandler;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceChromeTabbedActivity;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
+import org.chromium.chrome.browser.native_page.NativePageAssassin;
 import org.chromium.chrome.browser.net.spdyproxy.DataReductionProxySettings;
-import org.chromium.chrome.browser.ntp.NativePageAssassin;
 import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.ntp.NewTabPageUma;
 import org.chromium.chrome.browser.omaha.OmahaBase;
@@ -100,6 +109,7 @@ import org.chromium.chrome.browser.partnercustomizations.HomepageManager;
 import org.chromium.chrome.browser.partnercustomizations.PartnerBrowserCustomizations;
 import org.chromium.chrome.browser.preferences.ChromePreferenceManager;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
+import org.chromium.chrome.browser.preferences.datareduction.DataReductionMainMenuItem;
 import org.chromium.chrome.browser.preferences.datareduction.DataReductionPromoScreen;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.SigninPromoUtil;
@@ -125,23 +135,24 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabmodel.TabWindowManager;
+import org.chromium.chrome.browser.tasks.TasksUma;
 import org.chromium.chrome.browser.toolbar.ToolbarButtonInProductHelpController;
 import org.chromium.chrome.browser.toolbar.ToolbarControlContainer;
+import org.chromium.chrome.browser.util.AccessibilityUtil;
 import org.chromium.chrome.browser.util.FeatureUtilities;
 import org.chromium.chrome.browser.util.IntentUtils;
-import org.chromium.chrome.browser.vr_shell.VrIntentUtils;
-import org.chromium.chrome.browser.vr_shell.VrShellDelegate;
+import org.chromium.chrome.browser.vr.VrModuleProvider;
 import org.chromium.chrome.browser.widget.OverviewListLayout;
 import org.chromium.chrome.browser.widget.emptybackground.EmptyBackgroundViewWrapper;
 import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
-import org.chromium.content_public.browser.ContentVideoView;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsAccessibility;
 import org.chromium.content_public.common.ContentSwitches;
 import org.chromium.content_public.common.Referrer;
+import org.chromium.ui.UiUtils;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.widget.Toast;
@@ -149,10 +160,8 @@ import org.chromium.ui.widget.Toast;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.ref.WeakReference;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.net.URL;
@@ -163,29 +172,25 @@ import java.net.URL;
  */
 public class ChromeTabbedActivity
         extends ChromeActivity implements OverviewModeObserver, ScreenshotMonitorDelegate {
+    @IntDef({BackPressedResult.NOTHING_HAPPENED, BackPressedResult.HELP_URL_CLOSED,
+            BackPressedResult.MINIMIZED_NO_TAB_CLOSED, BackPressedResult.MINIMIZED_TAB_CLOSED,
+            BackPressedResult.TAB_CLOSED, BackPressedResult.TAB_IS_NULL,
+            BackPressedResult.EXITED_TAB_SWITCHER, BackPressedResult.EXITED_FULLSCREEN,
+            BackPressedResult.NAVIGATED_BACK})
     @Retention(RetentionPolicy.SOURCE)
-    @IntDef({
-        BACK_PRESSED_NOTHING_HAPPENED,
-        BACK_PRESSED_HELP_URL_CLOSED,
-        BACK_PRESSED_MINIMIZED_NO_TAB_CLOSED,
-        BACK_PRESSED_MINIMIZED_TAB_CLOSED,
-        BACK_PRESSED_TAB_CLOSED,
-        BACK_PRESSED_TAB_IS_NULL,
-        BACK_PRESSED_EXITED_TAB_SWITCHER,
-        BACK_PRESSED_EXITED_FULLSCREEN,
-        BACK_PRESSED_NAVIGATED_BACK
-    })
-    private @interface BackPressedResult {}
-    private static final int BACK_PRESSED_NOTHING_HAPPENED = 0;
-    private static final int BACK_PRESSED_HELP_URL_CLOSED = 1;
-    private static final int BACK_PRESSED_MINIMIZED_NO_TAB_CLOSED = 2;
-    private static final int BACK_PRESSED_MINIMIZED_TAB_CLOSED = 3;
-    private static final int BACK_PRESSED_TAB_CLOSED = 4;
-    private static final int BACK_PRESSED_TAB_IS_NULL = 5;
-    private static final int BACK_PRESSED_EXITED_TAB_SWITCHER = 6;
-    private static final int BACK_PRESSED_EXITED_FULLSCREEN = 7;
-    private static final int BACK_PRESSED_NAVIGATED_BACK = 8;
-    private static final int BACK_PRESSED_COUNT = 9;
+    private @interface BackPressedResult {
+        int NOTHING_HAPPENED = 0;
+        int HELP_URL_CLOSED = 1;
+        int MINIMIZED_NO_TAB_CLOSED = 2;
+        int MINIMIZED_TAB_CLOSED = 3;
+        int TAB_CLOSED = 4;
+        int TAB_IS_NULL = 5;
+        int EXITED_TAB_SWITCHER = 6;
+        int EXITED_FULLSCREEN = 7;
+        int NAVIGATED_BACK = 8;
+
+        int NUM_ENTRIES = 9;
+    }
 
     private static final String TAG = "ChromeTabbedActivity";
 
@@ -227,15 +232,6 @@ public class ChromeTabbedActivity
     /** The task id of the activity that tabs were merged into. */
     private static int sMergedInstanceTaskId;
 
-    /**
-     * Time in ms from when we last backgrounded Chrome until we show the bottom sheet at half.
-     * Default time is 3 hours.
-     * crbug.com/706258
-     */
-    private static final int TIME_SINCE_BACKGROUNDED_TO_SHOW_BOTTOM_SHEET_HALF_MINS = 180;
-    private static final String TIME_SINCE_BACKGROUNDED_IN_MINS_PARAM =
-            "time_since_backgrounded_in_mins";
-
     // Name of the ChromeTabbedActivity alias that handles MAIN intents.
     public static final String MAIN_LAUNCHER_ACTIVITY_NAME = "com.google.android.apps.chrome.Main";
 
@@ -249,7 +245,7 @@ public class ChromeTabbedActivity
     private static final EnumeratedHistogramSample sUndispatchedExplicitMainViewIntentSource =
             new EnumeratedHistogramSample(
                     "Android.MainActivity.UndispatchedExplicitMainViewIntentSource",
-                    IntentHandler.ExternalAppId.INDEX_BOUNDARY.ordinal());
+                    IntentHandler.ExternalAppId.NUM_ENTRIES);
 
     private final ActivityStopMetrics mActivityStopMetrics;
     private final MainIntentBehaviorMetrics mMainIntentMetrics;
@@ -276,13 +272,14 @@ public class ChromeTabbedActivity
 
     private Boolean mMergeTabsOnResume;
 
-    private Boolean mIsAccessibilityEnabled;
+    private Boolean mIsAccessibilityTabSwitcherEnabled;
 
     private LocaleManager mLocaleManager;
 
     private AppIndexingUtil mAppIndexingUtil;
 
     private Runnable mShowHistoryRunnable;
+    private NavigationPopup mNavigationPopup;
 
     /**
      * Keeps track of whether or not a specific tab was created based on the startup intent.
@@ -294,6 +291,30 @@ public class ChromeTabbedActivity
 
     // Time at which an intent was received and handled.
     private long mIntentHandlingTimeMs;
+
+    private boolean mPartnerPageIsLoaded = false;
+
+    private final IncognitoTabHost mIncognitoTabHost = new IncognitoTabHost() {
+
+        @Override
+        public boolean hasIncognitoTabs() {
+            return getTabModelSelector().getModel(true).getCount() > 0;
+        }
+
+        @Override
+        public void closeAllIncognitoTabs() {
+            if (isActivityDestroyed()) return;
+
+            // If the tabbed activity has not yet initialized, then finish the activity to avoid
+            // timing issues with clearing the incognito tab state in the background.
+            if (!areTabModelsInitialized() || !didFinishNativeInitialization()) {
+                finish();
+                return;
+            }
+
+            getTabModelSelector().getModel(true).closeAllTabs(false, false);
+        }
+    };
 
     private class TabbedAssistStatusHandler extends AssistStatusHandler {
         public TabbedAssistStatusHandler(Activity activity) {
@@ -320,13 +341,13 @@ public class ChromeTabbedActivity
 
         @Override
         public boolean canShowBrowserControls() {
-            if (VrShellDelegate.isInVr()) return false;
+            if (VrModuleProvider.getDelegate().isInVr()) return false;
             return super.canShowBrowserControls();
         }
 
         @Override
         public boolean canAutoHideBrowserControls() {
-            if (VrShellDelegate.isInVr()) return true;
+            if (VrModuleProvider.getDelegate().isInVr()) return true;
             return super.canAutoHideBrowserControls();
         }
     }
@@ -359,6 +380,34 @@ public class ChromeTabbedActivity
         return TextUtils.equals(className, ChromeTabbedActivity.class.getName())
                 || TextUtils.equals(className, MultiInstanceChromeTabbedActivity.class.getName())
                 || TextUtils.equals(className, ChromeTabbedActivity2.class.getName());
+    }
+
+    /**
+     * Specify the proper non-.Main-aliased Chrome Activity for the given component.
+     *
+     * @param intent The intent to set the component for.
+     * @param component The client generated component to be validated.
+     * @param currentActivity The activity triggering the intent.
+     */
+    public static void setNonAliasedComponent(Intent intent, ComponentName component) {
+        assert component != null;
+        Context appContext = ContextUtils.getApplicationContext();
+        if (!TextUtils.equals(component.getPackageName(), appContext.getPackageName())) {
+            return;
+        }
+        if (component.getClassName() != null
+                && TextUtils.equals(component.getClassName(),
+                           ChromeTabbedActivity.MAIN_LAUNCHER_ACTIVITY_NAME)) {
+            // Keep in sync with the activities that the .Main alias points to in
+            // AndroidManifest.xml.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+                intent.setClass(appContext, ChromeLauncherActivity.class);
+            } else {
+                intent.setClass(appContext, ChromeTabbedActivity.class);
+            }
+        } else {
+            intent.setComponent(component);
+        }
     }
 
     /**
@@ -413,9 +462,9 @@ public class ChromeTabbedActivity
             dispatchedHistogram.record(action != LaunchIntentDispatcher.Action.CONTINUE);
             if (action == LaunchIntentDispatcher.Action.CONTINUE) {
                 // Intent was not dispatched, record its source.
-                IntentHandler.ExternalAppId externalId =
-                        IntentHandler.determineExternalIntentSource(intent);
-                sUndispatchedExplicitMainViewIntentSource.record(externalId.ordinal());
+                @IntentHandler.ExternalAppId
+                int externalId = IntentHandler.determineExternalIntentSource(intent);
+                sUndispatchedExplicitMainViewIntentSource.record(externalId);
 
                 // Crash if intent came from us, but only in debug builds and only if we weren't
                 // explicitly told not to. Hopefully we'll get enough reports to find where
@@ -457,7 +506,7 @@ public class ChromeTabbedActivity
 
             mTabModelObserver = new TabModelSelectorTabModelObserver(mTabModelSelectorImpl) {
                 @Override
-                public void didSelectTab(Tab tab, TabSelectionType type, int lastId) {
+                public void didSelectTab(Tab tab, @TabSelectionType int type, int lastId) {
                     try {
                         URL url = new URL(tab.getUrl());
 
@@ -495,7 +544,7 @@ public class ChromeTabbedActivity
                 }
 
                 @Override
-                public void didAddTab(Tab tab, TabLaunchType type) {
+                public void didAddTab(Tab tab, @TabLaunchType int type) {
                     if (type == TabLaunchType.FROM_LONGPRESS_BACKGROUND
                             && !DeviceClassManager.enableAnimations()) {
                         Toast.makeText(ChromeTabbedActivity.this,
@@ -557,7 +606,7 @@ public class ChromeTabbedActivity
 
             // Check for incognito tabs to handle the case where Chrome was swiped away in the
             // background.
-            if (TabWindowManager.getInstance().canDestroyIncognitoProfile()) {
+            if (!IncognitoUtils.doIncognitoTabsExist()) {
                 IncognitoNotificationManager.dismissIncognitoNotification();
             }
 
@@ -575,20 +624,18 @@ public class ChromeTabbedActivity
             // Promo dialogs in multiwindow mode are broken on some devices: http://crbug.com/354696
             boolean isLegacyMultiWindow = MultiWindowUtils.getInstance().isLegacyMultiWindow(this);
             if (!isShowingPromo && !mIntentWithEffect && FirstRunStatus.getFirstRunFlowComplete()
-                    && preferenceManager.getPromosSkippedOnFirstStart()
-                    && !VrShellDelegate.isInVr()
-                    // VrShellDelegate.isInVr may not return true at this point even though Chrome
-                    // is about to enter VR, so we need to also check whether we're launching into
-                    // VR.
-                    && !VrIntentUtils.isLaunchingIntoVr(this, getIntent())
+                    && preferenceManager.readBoolean(
+                               ChromePreferenceManager.PROMOS_SKIPPED_ON_FIRST_START, false)
+                    && !VrModuleProvider.getDelegate().isInVr()
+                    // VrModuleProvider.getDelegate().isInVr may not return true at this point even
+                    // though Chrome is about to enter VR, so we need to also check whether we're
+                    // launching into VR.
+                    && !VrModuleProvider.getIntentDelegate().isLaunchingIntoVr(this, getIntent())
                     && !isLegacyMultiWindow) {
-                // Data reduction promo should be temporarily suppressed if the sign in promo is
-                // shown to avoid nagging users too much.
-                /*isShowingPromo = SigninPromoUtil.launchSigninPromoIfNeeded(this)
-                        || DataReductionPromoScreen.launchDataReductionPromo(
-                                   this, mTabModelSelectorImpl.getCurrentModel().isIncognito());*/
+                //isShowingPromo = maybeShowPromo();
             } else {
-                preferenceManager.setPromosSkippedOnFirstStart(true);
+                preferenceManager.writeBoolean(
+                        ChromePreferenceManager.PROMOS_SKIPPED_ON_FIRST_START, true);
             }
 
             if (!isShowingPromo) {
@@ -601,74 +648,38 @@ public class ChromeTabbedActivity
         }
     }
 
-    /**
-     * Determine whether the incognito profile needs to be destroyed as part of startup.  This is
-     * only needed on L+ when it is possible to swipe away tasks from Android recents without
-     * killing the process.  When this occurs, the normal incognito profile shutdown does not
-     * happen, which can leave behind incognito cookies from an existing session.
-     */
-    @SuppressLint("NewApi")
-    private boolean shouldDestroyIncognitoProfile() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) return false;
-
-        Context context = ContextUtils.getApplicationContext();
-        ActivityManager manager =
-                (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        PackageManager pm = context.getPackageManager();
-
-        Set<Integer> tabbedModeTaskIds = new HashSet<>();
-        for (AppTask task : manager.getAppTasks()) {
-            RecentTaskInfo info = DocumentUtils.getTaskInfoFromTask(task);
-            if (info == null) continue;
-            String className = DocumentUtils.getTaskClassName(task, pm);
-
-            if (isTabbedModeClassName(className)) {
-                tabbedModeTaskIds.add(info.id);
-            }
+    private boolean maybeShowPromo() {
+        // Only one promo can be shown in one run to avoid nagging users too much.
+        if (SigninPromoUtil.launchConsentBumpIfNeeded(this)) return true;
+        if (SigninPromoUtil.launchSigninPromoIfNeeded(this)) return true;
+        if (DataReductionPromoScreen.launchDataReductionPromo(
+                    this, mTabModelSelectorImpl.getCurrentModel().isIncognito())) {
+            return true;
         }
 
-        if (tabbedModeTaskIds.size() == 0) {
-            return Profile.getLastUsedProfile().hasOffTheRecordProfile();
-        }
-
-        List<WeakReference<Activity>> activities = ApplicationStatus.getRunningActivities();
-        for (int i = 0; i < activities.size(); i++) {
-            Activity activity = activities.get(i).get();
-            if (activity == null) continue;
-            tabbedModeTaskIds.remove(activity.getTaskId());
-        }
-
-        // If all tabbed mode tasks listed in Android recents are alive, check to see if
-        // any have incognito tabs exist.  If all are alive and no tabs exist, we should ensure that
-        // we delete the incognito profile if one is around still.
-        if (tabbedModeTaskIds.size() == 0) {
-            return TabWindowManager.getInstance().canDestroyIncognitoProfile()
-                    && Profile.getLastUsedProfile().hasOffTheRecordProfile();
-        }
-
-        // In this case, we have tabbed mode activities listed in recents that do not have an
-        // active running activity associated with them.  We can not accurately get an incognito
-        // tab count as we do not know if any incognito tabs are associated with the yet unrestored
-        // tabbed mode.  Thus we do not proactivitely destroy the incognito profile.
-        return false;
+        return LanguageAskPrompt.maybeShowLanguageAskPrompt(this);
     }
 
     @Override
     public void onResumeWithNative() {
         super.onResumeWithNative();
 
-        if (shouldDestroyIncognitoProfile()) {
+        if (IncognitoUtils.shouldDestroyIncognitoProfileOnStartup()) {
             Profile.getLastUsedProfile().getOffTheRecordProfile().destroyWhenAppropriate();
         } else {
             CookiesFetcher.restoreCookies();
         }
 
         if (FeatureUtilities.isTabModelMergingEnabled()) {
-            boolean inMultiWindowMode = MultiWindowUtils.getInstance().isInMultiWindowMode(this);
-            // Merge tabs if the activity is not in multi-window mode and mMergeTabsOnResume is true
-            // or unset because the activity is just starting or was destroyed.
-            if (!inMultiWindowMode && (mMergeTabsOnResume == null || mMergeTabsOnResume)) {
+            boolean inMultiWindowMode = MultiWindowUtils.getInstance().isInMultiWindowMode(this)
+                    || MultiWindowUtils.getInstance().isInMultiDisplayMode(this);
+            // Don't need to merge tabs when mMergeTabsOnResume is null (cold start) since they get
+            // merged when TabPersistentStore.loadState(boolean) is called from initializeState().
+            if (!inMultiWindowMode && (mMergeTabsOnResume != null && mMergeTabsOnResume)) {
                 maybeMergeTabs();
+            } else if (!inMultiWindowMode && mMergeTabsOnResume == null) {
+                // This happens on cold start to kill any second activity that might exist.
+                killOtherTask();
             }
             mMergeTabsOnResume = false;
         }
@@ -676,10 +687,16 @@ public class ChromeTabbedActivity
         mLocaleManager.setSnackbarManager(getSnackbarManager());
         mLocaleManager.startObservingPhoneChanges();
 
-        if (isWarmOnResume()) {
-            SuggestionsEventReporterBridge.onActivityWarmResumed();
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.INTEREST_FEED_CONTENT_SUGGESTIONS)) {
+            FeedEventReporter.onBrowserForegrounded();
         } else {
-            SuggestionsEventReporterBridge.onColdStart();
+            if (isWarmOnResume()) {
+                SuggestionsEventReporterBridge.onActivityWarmResumed();
+            } else {
+                SuggestionsEventReporterBridge.onColdStart();
+            }
+        }
+        if (!isWarmOnResume()) {
             SuggestionsMetrics.recordArticlesListVisible();
         }
 
@@ -726,6 +743,7 @@ public class ChromeTabbedActivity
 
     @Override
     public void onStartWithNative() {
+        mMainIntentMetrics.logLaunchBehavior();
         super.onStartWithNative();
 
         setInitialOverviewState();
@@ -887,6 +905,8 @@ public class ChromeTabbedActivity
                     mLayoutManager, mLayoutManager, tabSwitcherClickHandler, newTabClickHandler,
                     bookmarkClickHandler, braveShieldsClickHandler, null, incognitoClickHandler);
 
+            mLayoutManager.setToolbarManager(getToolbarManager());
+
             if (isTablet()) {
                 EmptyBackgroundViewWrapper bgViewWrapper = new EmptyBackgroundViewWrapper(
                         getTabModelSelector(), getTabCreator(false), ChromeTabbedActivity.this,
@@ -896,7 +916,7 @@ public class ChromeTabbedActivity
 
             mLayoutManager.hideOverview(false);
 
-            mScreenshotMonitor = ScreenshotMonitor.create(ChromeTabbedActivity.this);
+            mScreenshotMonitor = new ScreenshotMonitor(ChromeTabbedActivity.this);
 
             if (!CommandLine.getInstance().hasSwitch(
                         ChromeSwitches.ENABLE_INCOGNITO_SNAPSHOTS_IN_ANDROID_RECENTS)) {
@@ -910,6 +930,7 @@ public class ChromeTabbedActivity
             }
 
             mUIInitialized = true;
+            onAccessibilityTabSwitcherModeChanged();
         } finally {
             TraceEvent.end("ChromeTabbedActivity.initializeUI");
         }
@@ -1117,6 +1138,18 @@ public class ChromeTabbedActivity
                         }, INITIAL_TAB_CREATION_TIMEOUT_MS);
             }
 
+            ThreadUtils.runOnUiThread(
+                    () -> {
+                        StatsUpdater.WaitForUpdate();
+                        String partnerOfferPage = StatsUpdater.GetPartnerOfferPage();
+                        if (null != partnerOfferPage && !partnerOfferPage.isEmpty()) {
+                            getTabCreator(false).launchUrl(partnerOfferPage, TabLaunchType.FROM_CHROME_UI);
+                            // Clean up once it is loaded
+                            StatsUpdater.SetPartnerOfferPage(null);
+                            mPartnerPageIsLoaded = true;
+                        }
+                    });
+
             RecordHistogram.recordBooleanHistogram(
                     "MobileStartup.ColdStartupIntent", mIntentWithEffect);
         } finally {
@@ -1128,6 +1161,9 @@ public class ChromeTabbedActivity
      * Create an initial tab for cold start without restored tabs.
      */
     private void createInitialTab() {
+        if (mPartnerPageIsLoaded) {
+            return;
+        }
         String url = HomepageManager.getHomepageUri();
         if (TextUtils.isEmpty(url)) {
             url = UrlConstants.NTP_URL;
@@ -1142,16 +1178,7 @@ public class ChromeTabbedActivity
             RecordHistogram.recordBooleanHistogram(
                     "MobileStartup.LoadedHomepageOnColdStart", startupHomepageIsNtp);
         }
-        StatsUpdater.WaitForUpdate();
-        String partnerOfferPage = StatsUpdater.GetPartnerOfferPage();
-        if (null != partnerOfferPage && !partnerOfferPage.isEmpty()) {
-            url = partnerOfferPage;
-        }
         getTabCreator(false).launchUrl(url, TabLaunchType.FROM_CHROME_UI);
-        if (null != partnerOfferPage && !partnerOfferPage.isEmpty()) {
-            // Clean up once it is loaded
-            StatsUpdater.SetPartnerOfferPage(null);
-        }
     }
 
     @Override
@@ -1166,14 +1193,30 @@ public class ChromeTabbedActivity
                 getCompositorViewHolder().onAccessibilityStatusChanged(enabled);
             }
         }
+
+        onAccessibilityTabSwitcherModeChanged();
+    }
+
+    private void onAccessibilityTabSwitcherModeChanged() {
+        if (!mUIInitialized) return;
+
+        boolean accessibilityTabSwitcherEnabled = DeviceClassManager.enableAccessibilityLayout();
         if (mLayoutManager != null && mLayoutManager.overviewVisible()
-                && mIsAccessibilityEnabled != enabled) {
+                && (mIsAccessibilityTabSwitcherEnabled == null
+                           || mIsAccessibilityTabSwitcherEnabled
+                                   != DeviceClassManager.enableAccessibilityLayout())) {
             mLayoutManager.hideOverview(false);
             if (getTabModelSelector().getCurrentModel().getCount() == 0) {
                 getCurrentTabCreator().launchNTP();
             }
         }
-        mIsAccessibilityEnabled = enabled;
+        mIsAccessibilityTabSwitcherEnabled = accessibilityTabSwitcherEnabled;
+
+        if (AccessibilityUtil.isAccessibilityEnabled()) {
+            RecordHistogram.recordBooleanHistogram(
+                    "Accessibility.Android.TabSwitcherPreferenceEnabled",
+                    mIsAccessibilityTabSwitcherEnabled);
+        }
     }
 
     /**
@@ -1187,7 +1230,7 @@ public class ChromeTabbedActivity
          */
         @Override
         public void processUrlViewIntent(String url, String referer, String headers,
-                TabOpenType tabOpenType, String externalAppId, int tabIdToBringToFront,
+                @TabOpenType int tabOpenType, String externalAppId, int tabIdToBringToFront,
                 boolean hasUserGesture, Intent intent) {
             if (isFromChrome(intent, externalAppId)) {
                 RecordUserAction.record("MobileTabbedModeViewIntentFromChrome");
@@ -1200,7 +1243,7 @@ public class ChromeTabbedActivity
 
             TabModel tabModel = getCurrentTabModel();
             switch (tabOpenType) {
-                case REUSE_URL_MATCHING_TAB_ELSE_NEW_TAB:
+                case TabOpenType.REUSE_URL_MATCHING_TAB_ELSE_NEW_TAB:
                     // Used by the bookmarks application.
                     if (tabModel.getCount() > 0 && mUIInitialized
                             && mLayoutManager.overviewVisible()) {
@@ -1220,7 +1263,7 @@ public class ChromeTabbedActivity
                             ShortcutHelper.EXTRA_SOURCE, ShortcutSource.UNKNOWN);
                     LaunchMetrics.recordHomeScreenLaunchIntoTab(url, shortcutSource);
                     break;
-                case BRING_TAB_TO_FRONT:
+                case TabOpenType.BRING_TAB_TO_FRONT:
                     mTabModelSelectorImpl.tryToRestoreTabStateForId(tabIdToBringToFront);
 
                     int tabIndex = TabModelUtils.getTabIndexById(tabModel, tabIdToBringToFront);
@@ -1246,7 +1289,7 @@ public class ChromeTabbedActivity
 
                     logMobileReceivedExternalIntent(externalAppId, intent);
                     break;
-                case CLOBBER_CURRENT_TAB:
+                case TabOpenType.CLOBBER_CURRENT_TAB:
                     // The browser triggered the intent. This happens when clicking links which
                     // can be handled by other applications (e.g. www.youtube.com links).
                     Tab currentTab = getActivityTab();
@@ -1267,10 +1310,10 @@ public class ChromeTabbedActivity
                         launchIntent(url, referer, headers, externalAppId, true, intent);
                     }
                     break;
-                case REUSE_APP_ID_MATCHING_TAB_ELSE_NEW_TAB:
+                case TabOpenType.REUSE_APP_ID_MATCHING_TAB_ELSE_NEW_TAB:
                     openNewTab(url, referer, headers, externalAppId, intent, false);
                     break;
-                case OPEN_NEW_TAB:
+                case TabOpenType.OPEN_NEW_TAB:
                     if (fromLauncherShortcut) {
                         recordLauncherShortcutAction(false);
                         reportNewTabShortcutUsed(false);
@@ -1278,7 +1321,7 @@ public class ChromeTabbedActivity
 
                     openNewTab(url, referer, headers, externalAppId, intent, true);
                     break;
-                case OPEN_NEW_INCOGNITO_TAB:
+                case TabOpenType.OPEN_NEW_INCOGNITO_TAB:
                     if (!TextUtils.equals(externalAppId, getPackageName())) {
                         assert false : "Only Chrome is allowed to open incognito tabs";
                         Log.e(TAG, "Only Chrome is allowed to open incognito tabs");
@@ -1312,14 +1355,11 @@ public class ChromeTabbedActivity
                                     intent, mIntentHandlingTimeMs);
                         }
                     } else {
-                        TabLaunchType launchType = IntentHandler.getTabLaunchType(intent);
-                        if (launchType != null) {
-                            getTabCreator(true).launchUrl(
-                                    url, launchType, intent, mIntentHandlingTimeMs);
-                        } else {
-                            getTabCreator(true).launchUrl(
-                                    url, TabLaunchType.FROM_LINK, intent, mIntentHandlingTimeMs);
-                        }
+                        @TabLaunchType
+                        Integer launchType = IntentHandler.getTabLaunchType(intent);
+                        if (launchType == null) launchType = TabLaunchType.FROM_LINK;
+                        getTabCreator(true).launchUrl(
+                                url, launchType, intent, mIntentHandlingTimeMs);
                     }
                     break;
                 default:
@@ -1393,7 +1433,7 @@ public class ChromeTabbedActivity
         // and triggers initialization of the native library. At the moment it seems safe to assume
         // that uninitialized native library is an indication of an application start that is
         // followed by navigation immediately without user input.
-        if (!LibraryLoader.isInitialized()) {
+        if (!LibraryLoader.getInstance().isInitialized()) {
             getActivityTabStartupMetricsTracker().trackStartupMetrics(STARTUP_UMA_HISTOGRAM_SUFFIX);
         }
 
@@ -1422,6 +1462,8 @@ public class ChromeTabbedActivity
                 && OmahaBase.isProbablyFreshInstall(this)) {
             getIntent().setData(null);
         }
+
+        IncognitoTabHostRegistry.getInstance().register(mIncognitoTabHost);
     }
 
     @Override
@@ -1460,6 +1502,8 @@ public class ChromeTabbedActivity
         super.initializeToolbar();
         if (isTablet()) {
             getToolbarManager().setShouldUpdateToolbarPrimaryColor(false);
+        } else if (FeatureUtilities.isBottomToolbarEnabled()) {
+            getToolbarManager().enableBottomToolbar();
         }
     }
 
@@ -1512,9 +1556,9 @@ public class ChromeTabbedActivity
                 }
                 tab.clearBraveShieldsCount();
             }
-
             @Override
             public void onPageLoadFinished(final Tab tab) {
+                mAppIndexingUtil.extractCopylessPasteMetadata(tab);
                 String url = tab.getUrl();
                 if (getActivityTab() == tab) {
                     try {
@@ -1524,7 +1568,6 @@ public class ChromeTabbedActivity
                         setBraveShieldsBlackAndWhite();
                     }
                 }
-                mAppIndexingUtil.extractCopylessPasteMetadata(tab);
             }
 
             @Override
@@ -1609,24 +1652,47 @@ public class ChromeTabbedActivity
     @Override
     protected AppMenuPropertiesDelegate createAppMenuPropertiesDelegate() {
         return new AppMenuPropertiesDelegate(this) {
-            private boolean showDataSaverFooter() {
+            private boolean shouldShowDataSaverMenuItem() {
                 return DataReductionProxySettings.getInstance()
                         .shouldUseDataReductionMainMenuItem();
             }
 
             @Override
             public int getFooterResourceId() {
-                return showDataSaverFooter() ? R.layout.data_reduction_main_menu_item : 0;
+                if (FeatureUtilities.isBottomToolbarEnabled()) {
+                    return this.shouldShowPageMenu() ? R.layout.icon_row_menu_footer : 0;
+                }
+                return shouldShowDataSaverMenuItem() ? R.layout.data_reduction_main_menu_item : 0;
             }
 
             @Override
-            public View getHeaderView() {
-                return null;
+            public void onFooterViewInflated(AppMenu menu, View view) {
+                if (view instanceof AppMenuIconRowFooter) {
+                    ((AppMenuIconRowFooter) view)
+                            .initialize(ChromeTabbedActivity.this, menu, mBookmarkBridge);
+                }
+            }
+
+            @Override
+            public int getHeaderResourceId() {
+                if (FeatureUtilities.isBottomToolbarEnabled()) {
+                    return shouldShowDataSaverMenuItem() ? R.layout.data_reduction_main_menu_item
+                                                         : 0;
+                }
+                return 0;
+            }
+
+            @Override
+            public void onHeaderViewInflated(AppMenu menu, View view) {
+                if (view instanceof DataReductionMainMenuItem) {
+                    view.findViewById(R.id.data_reduction_menu_divider).setVisibility(View.GONE);
+                }
             }
 
             @Override
             public boolean shouldShowFooter(int maxMenuHeight) {
-                if (showDataSaverFooter()) {
+                if (FeatureUtilities.isBottomToolbarEnabled()) return true;
+                if (shouldShowDataSaverMenuItem()) {
                     return canShowDataReductionItem(maxMenuHeight);
                 }
                 return super.shouldShowFooter(maxMenuHeight);
@@ -1634,9 +1700,9 @@ public class ChromeTabbedActivity
 
             @Override
             public boolean shouldShowHeader(int maxMenuHeight) {
-                if (getBottomSheet() == null) return super.shouldShowHeader(maxMenuHeight);
-
-                Tracker tracker = TrackerFactory.getTrackerForProfile(Profile.getLastUsedProfile());
+                if (!FeatureUtilities.isBottomToolbarEnabled()) {
+                    return super.shouldShowHeader(maxMenuHeight);
+                }
 
                 if (DataReductionProxySettings.getInstance().shouldUseDataReductionMainMenuItem()) {
                     return canShowDataReductionItem(maxMenuHeight);
@@ -1800,7 +1866,7 @@ public class ChromeTabbedActivity
             if (!currentModel.isIncognito()) currentModel.openMostRecentlyClosedTab();
             RecordUserAction.record("MobileTabClosedUndoShortCut");
         } else if (id == R.id.enter_vr_id) {
-            VrShellDelegate.enterVrIfNecessary();
+            VrModuleProvider.getDelegate().enterVrIfNecessary();
         } else {
             return super.onMenuOrKeyboardAction(id, fromMenu);
         }
@@ -1819,8 +1885,8 @@ public class ChromeTabbedActivity
     private void recordBackPressedUma(String logMessage, @BackPressedResult int action) {
         Log.i(TAG, "Back pressed: " + logMessage);
         RecordHistogram.recordEnumeratedHistogram(
-                "Android.Activity.ChromeTabbedActivity.SystemBackAction",
-                action, BACK_PRESSED_COUNT);
+                "Android.Activity.ChromeTabbedActivity.SystemBackAction", action,
+                BackPressedResult.NUM_ENTRIES);
     }
 
     private void recordLauncherShortcutAction(boolean isIncognito) {
@@ -1849,10 +1915,12 @@ public class ChromeTabbedActivity
         // BottomSheet can be opened before native is initialized.
         if (!mUIInitialized) return getBottomSheet() != null && getBottomSheet().handleBackPress();
 
+        if (getManualFillingController().handleBackPress()) return true;
+
         final Tab currentTab = getActivityTab();
 
         if (exitFullscreenIfShowing()) {
-            recordBackPressedUma("Exited fullscreen", BACK_PRESSED_EXITED_FULLSCREEN);
+            recordBackPressedUma("Exited fullscreen", BackPressedResult.EXITED_FULLSCREEN);
             return true;
         }
 
@@ -1861,31 +1929,31 @@ public class ChromeTabbedActivity
         if (mTabModalHandler.handleBackPress()) return true;
 
         if (currentTab == null) {
-            recordBackPressedUma("currentTab is null", BACK_PRESSED_TAB_IS_NULL);
+            recordBackPressedUma("currentTab is null", BackPressedResult.TAB_IS_NULL);
             moveTaskToBack(true);
             return true;
         }
 
         // If we are in overview mode and not a tablet, then leave overview mode on back.
         if (mLayoutManager.overviewVisible() && !isTablet()) {
-            recordBackPressedUma("Hid overview", BACK_PRESSED_EXITED_TAB_SWITCHER);
+            recordBackPressedUma("Hid overview", BackPressedResult.EXITED_TAB_SWITCHER);
             mLayoutManager.hideOverview(true);
             return true;
         }
 
         if (getToolbarManager().back()) {
-            recordBackPressedUma("Navigating backward", BACK_PRESSED_NAVIGATED_BACK);
+            recordBackPressedUma("Navigating backward", BackPressedResult.NAVIGATED_BACK);
             return true;
         }
 
         // If the current tab url is HELP_URL, then the back button should close the tab to
         // get back to the previous state. The reason for startsWith check is that the
         // actual redirected URL is a different system language based help url.
-        final TabLaunchType type = currentTab.getLaunchType();
+        final @TabLaunchType int type = currentTab.getLaunchType();
         final boolean helpUrl = currentTab.getUrl().startsWith(HELP_URL_PREFIX);
         if (type == TabLaunchType.FROM_CHROME_UI && helpUrl) {
             getCurrentTabModel().closeTab(currentTab);
-            recordBackPressedUma("Closed tab for help URL", BACK_PRESSED_HELP_URL_CLOSED);
+            recordBackPressedUma("Closed tab for help URL", BackPressedResult.HELP_URL_CLOSED);
             return true;
         }
 
@@ -1898,24 +1966,26 @@ public class ChromeTabbedActivity
         final boolean minimizeApp = !shouldCloseTab || currentTab.isCreatedForExternalApp();
         if (minimizeApp) {
             if (shouldCloseTab) {
-                recordBackPressedUma("Minimized and closed tab", BACK_PRESSED_MINIMIZED_TAB_CLOSED);
-                mActivityStopMetrics.setStopReason(ActivityStopMetrics.STOP_REASON_BACK_BUTTON);
+                recordBackPressedUma(
+                        "Minimized and closed tab", BackPressedResult.MINIMIZED_TAB_CLOSED);
+                mActivityStopMetrics.setStopReason(ActivityStopMetrics.StopReason.BACK_BUTTON);
                 sendToBackground(currentTab);
                 return true;
             } else {
-                recordBackPressedUma("Minimized, kept tab", BACK_PRESSED_MINIMIZED_NO_TAB_CLOSED);
-                mActivityStopMetrics.setStopReason(ActivityStopMetrics.STOP_REASON_BACK_BUTTON);
+                recordBackPressedUma(
+                        "Minimized, kept tab", BackPressedResult.MINIMIZED_NO_TAB_CLOSED);
+                mActivityStopMetrics.setStopReason(ActivityStopMetrics.StopReason.BACK_BUTTON);
                 sendToBackground(null);
                 return true;
             }
         } else if (shouldCloseTab) {
-            recordBackPressedUma("Tab closed", BACK_PRESSED_TAB_CLOSED);
+            recordBackPressedUma("Tab closed", BackPressedResult.TAB_CLOSED);
             getCurrentTabModel().closeTab(currentTab, true, false, false);
             return true;
         }
 
         assert false : "The back button should have already been handled by this point";
-        recordBackPressedUma("Unhandled", BACK_PRESSED_NOTHING_HAPPENED);
+        recordBackPressedUma("Unhandled", BackPressedResult.NOTHING_HAPPENED);
         return false;
     }
 
@@ -1928,7 +1998,8 @@ public class ChromeTabbedActivity
      * @return Whether pressing the back button on the provided Tab should close the Tab.
      */
     public static boolean backShouldCloseTab(Tab tab) {
-        TabLaunchType type = tab.getLaunchType();
+        @TabLaunchType
+        int type = tab.getLaunchType();
 
         return type == TabLaunchType.FROM_LINK || type == TabLaunchType.FROM_EXTERNAL_APP
                 || type == TabLaunchType.FROM_LONGPRESS_FOREGROUND
@@ -2092,6 +2163,7 @@ public class ChromeTabbedActivity
 
         if (mNavigationBarColorController != null) mNavigationBarColorController.destroy();
 
+        IncognitoTabHostRegistry.getInstance().unregister(mIncognitoTabHost);
         super.onDestroyInternal();
     }
 
@@ -2138,7 +2210,42 @@ public class ChromeTabbedActivity
         return super.onKeyUp(keyCode, event);
     }
 
-    private void showFullHistoryForTab() {}
+    private void showFullHistoryForTab() {
+        if (!ChromeFeatureList.isInitialized()
+                || !ChromeFeatureList.isEnabled(ChromeFeatureList.LONG_PRESS_BACK_FOR_HISTORY)) {
+            return;
+        }
+
+        Tab tab = getActivityTab();
+        if (tab == null || tab.getWebContents() == null || !tab.isUserInteractable()) return;
+
+        mNavigationPopup = new NavigationPopup(
+                tab.getProfile(), this, tab.getWebContents().getNavigationController(), false);
+        mNavigationPopup.reverseHistoryOrder();
+        mNavigationPopup.setWidth(
+                getResources().getDimensionPixelSize(R.dimen.navigation_popup_width));
+        mNavigationPopup.setAnchorView(findViewById(R.id.navigation_popup_anchor_stub));
+        mNavigationPopup.setOnDismissListener(() -> mNavigationPopup = null);
+
+        positionAndShowNavigationPopup();
+    }
+
+    @Override
+    public void onOrientationChange(int orientation) {
+        super.onOrientationChange(orientation);
+        positionAndShowNavigationPopup();
+    }
+
+    private void positionAndShowNavigationPopup() {
+        if (mNavigationPopup == null) return;
+
+        // Center popup window.
+        ViewGroup coordinator = findViewById(R.id.coordinator);
+        int horizontalOffset = coordinator.getWidth() / 2 - mNavigationPopup.getWidth() / 2;
+        if (horizontalOffset > 0) mNavigationPopup.setHorizontalOffset(horizontalOffset);
+
+        mNavigationPopup.show();
+    }
 
     @Override
     public void onProvideKeyboardShortcuts(List<KeyboardShortcutGroup> data, Menu menu,
@@ -2186,13 +2293,8 @@ public class ChromeTabbedActivity
 
     @Override
     protected void showAppMenuForKeyboardEvent() {
-        if (!mUIInitialized || isFullscreenVideoPlaying()) return;
+        if (!mUIInitialized) return;
         super.showAppMenuForKeyboardEvent();
-    }
-
-    private boolean isFullscreenVideoPlaying() {
-        ContentVideoView view = ContentVideoView.getInstance();
-        return view != null && view.createdWithContext(this);
     }
 
     @Override
@@ -2270,14 +2372,13 @@ public class ChromeTabbedActivity
 
     @Override
     protected void setStatusBarColor(@Nullable Tab tab, int color) {
-        if (isTablet()) return;
+        if (isTablet() || UiUtils.isSystemUiThemingDisabled()) return;
 
         if (!isInOverviewMode()) {
             super.setStatusBarColor(tab, color);
             return;
         }
 
-        int tabSwitcherColor = Color.BLACK;
         boolean supportsDarkStatusIcons = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M;
         if (!supportsDarkStatusIcons || !supportsModernDesign()
                 || !FeatureUtilities.isChromeModernDesignEnabled()) {
@@ -2309,6 +2410,12 @@ public class ChromeTabbedActivity
         if (!FeatureUtilities.isTabModelMergingEnabled() || !didFinishNativeInitialization()) {
             return;
         }
+        // Navigation Popup does not move with multi-window bar.
+        // When multi-window starts, the popup is cut off, and the cut off portion is inaccessible.
+        // When the window size changes through multi-window, the popup windows position does not
+        // change. Because of these problems, dismiss the popup window until a solution appears.
+        if (mNavigationPopup != null) mNavigationPopup.dismiss();
+
         if (!isInMultiWindowMode) {
             // If the activity is currently resumed when multi-window mode is exited, try to merge
             // tabs from the other activity instance.
@@ -2328,13 +2435,8 @@ public class ChromeTabbedActivity
         mTabModelSelectorImpl.saveState();
     }
 
-    /**
-     * Merges tabs from a second ChromeTabbedActivity instance if necesssary and calls
-     * finishAndRemoveTask() on the other activity.
-     */
     @TargetApi(Build.VERSION_CODES.M)
-    @VisibleForTesting
-    public void maybeMergeTabs() {
+    private void killOtherTask() {
         if (!FeatureUtilities.isTabModelMergingEnabled()) return;
 
         Class<?> otherWindowActivityClass =
@@ -2376,12 +2478,23 @@ public class ChromeTabbedActivity
             // 3. Kill the other activity's task to remove it from Android recents.
             otherActivityTask.finishAndRemoveTask();
         }
+        setMergedInstanceTaskId(getTaskId());
+    }
+
+    /**
+     * Merges tabs from a second ChromeTabbedActivity instance if necesssary and calls
+     * finishAndRemoveTask() on the other activity.
+     */
+    @TargetApi(Build.VERSION_CODES.M)
+    @VisibleForTesting
+    public void maybeMergeTabs() {
+        if (!FeatureUtilities.isTabModelMergingEnabled()) return;
+
+        killOtherTask();
 
         // 4. Ask TabPersistentStore to merge state.
         RecordUserAction.record("Android.MergeState.Live");
         mTabModelSelectorImpl.mergeState();
-
-        setMergedInstanceTaskId(getTaskId());
     }
 
     @Override
@@ -2412,7 +2525,7 @@ public class ChromeTabbedActivity
 
     @Override
     protected ChromeFullscreenManager createFullscreenManager() {
-        return new ChromeFullscreenManager(this, ChromeFullscreenManager.CONTROLS_POSITION_TOP);
+        return new ChromeFullscreenManager(this, ChromeFullscreenManager.ControlsPosition.TOP);
     }
 
     /**
@@ -2444,7 +2557,7 @@ public class ChromeTabbedActivity
 
     @Override
     public boolean supportsFullscreenActivity() {
-        return !VrShellDelegate.isInVr();
+        return !VrModuleProvider.getDelegate().isInVr();
     }
 
     @Override
@@ -2467,6 +2580,8 @@ public class ChromeTabbedActivity
             public void run() {
                 getToolbarManager().showDownloadPageTextBubble(
                         getActivityTab(), FeatureConstants.DOWNLOAD_PAGE_SCREENSHOT_FEATURE);
+                ScreenshotTabObserver tabObserver = ScreenshotTabObserver.from(getActivityTab());
+                if (tabObserver != null) tabObserver.onScreenshotTaken();
             }
         });
     }

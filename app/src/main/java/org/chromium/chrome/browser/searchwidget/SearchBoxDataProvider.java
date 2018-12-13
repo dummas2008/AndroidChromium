@@ -22,7 +22,7 @@ class SearchBoxDataProvider implements ToolbarDataProvider {
      * @param tab The tab to use.
      */
     public void onNativeLibraryReady(Tab tab) {
-        assert LibraryLoader.isInitialized();
+        assert LibraryLoader.getInstance().isInitialized();
         mTab = tab;
     }
 
@@ -79,12 +79,12 @@ class SearchBoxDataProvider implements ToolbarDataProvider {
     }
 
     @Override
-    public boolean shouldShowGoogleG(String urlBarText) {
+    public boolean isOfflinePage() {
         return false;
     }
 
     @Override
-    public boolean isOfflinePage() {
+    public boolean isPreview() {
         return false;
     }
 

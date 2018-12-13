@@ -16,6 +16,7 @@ import org.chromium.base.ApiCompatibilityUtils;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.ChromeFeatureList;
 import org.chromium.chrome.browser.search_engines.TemplateUrlService;
 import org.chromium.chrome.browser.util.ViewUtils;
 
@@ -23,10 +24,6 @@ import org.chromium.chrome.browser.util.ViewUtils;
  * The New Tab Page for use in the incognito profile.
  */
 public class IncognitoNewTabPageView extends FrameLayout {
-
-    public static String INCOGNITO_DSE_NAME = "DuckDuckGo";
-    public static String INCOGNITO_DSE_KEYWORD = "duckduckgo.com";
-    public static String PREF_DDG_OFFER_SHOWN = "brave_ddg_offer_shown";
 
     private IncognitoNewTabPageManager mManager;
     private boolean mFirstShow = true;
@@ -67,6 +64,10 @@ public class IncognitoNewTabPageView extends FrameLayout {
         mScrollView = (NewTabPageScrollView) findViewById(R.id.ntp_scrollview);
         mScrollView.setBackgroundColor(
                 ApiCompatibilityUtils.getColor(getResources(), R.color.ntp_bg_incognito));
+        mScrollView.setContentDescription(getResources().getText(
+                ChromeFeatureList.isEnabled(ChromeFeatureList.INCOGNITO_STRINGS)
+                        ? R.string.accessibility_new_private_tab_page
+                        : R.string.accessibility_new_incognito_tab_page));
 
         // FOCUS_BEFORE_DESCENDANTS is needed to support keyboard shortcuts. Otherwise, pressing
         // any shortcut causes the UrlBar to be focused. See ViewRootImpl.leaveTouchMode().
@@ -149,21 +150,22 @@ public class IncognitoNewTabPageView extends FrameLayout {
     }
 
     public void showDDGOffer(boolean forceShow) {
-        if (TemplateUrlService.getInstance().getDefaultSearchEngineKeyword(true).equals(INCOGNITO_DSE_KEYWORD)) {
+        if (TemplateUrlService.getInstance().getDefaultSearchEngineKeyword(true).equals(TemplateUrlService.DDG_SE_KEYWORD) ||
+            !ContextUtils.getAppSharedPreferences().getBoolean(TemplateUrlService.PREF_SHOW_DDG_OFFER, true)) {
             mDDGOfferLink.setVisibility(View.GONE);
             mDDGOfferImage.setVisibility(View.GONE);
             return;
         }
-        if (!forceShow && ContextUtils.getAppSharedPreferences().getBoolean(PREF_DDG_OFFER_SHOWN, false)) {
+        if (!forceShow && ContextUtils.getAppSharedPreferences().getBoolean(TemplateUrlService.PREF_DDG_OFFER_SHOWN, false)) {
             return;
         }
-        ContextUtils.getAppSharedPreferences().edit().putBoolean(PREF_DDG_OFFER_SHOWN, true).apply();
+        ContextUtils.getAppSharedPreferences().edit().putBoolean(TemplateUrlService.PREF_DDG_OFFER_SHOWN, true).apply();
         new AlertDialog.Builder(mContext, R.style.BraveDialogTheme)
         .setView(R.layout.ddg_offer_layout)
         .setPositiveButton(R.string.ddg_offer_positive, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                TemplateUrlService.getInstance().setSearchEngine(INCOGNITO_DSE_NAME, INCOGNITO_DSE_KEYWORD, true);
+                TemplateUrlService.getInstance().setSearchEngine(TemplateUrlService.DDG_SE_NAME, TemplateUrlService.DDG_SE_KEYWORD, true);
                 mDDGOfferLink.setVisibility(View.GONE);
                 mDDGOfferImage.setVisibility(View.GONE);
             }

@@ -130,8 +130,6 @@ public class BraveShieldsMenuHandler {
 
         Drawable originalBgDrawable = mPopup.getBackground();
 
-        mPopup.setBackgroundDrawable(ApiCompatibilityUtils.getDrawable(
-                wrapper.getResources(), R.drawable.edge_menu_bg));
         mPopup.setAnimationStyle(R.style.OverflowMenuAnim);
 
         // Turn off window animations for low end devices, and on Android M, which has built-in menu

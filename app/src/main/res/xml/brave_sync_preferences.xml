@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2014 The Chromium Authors. All rights reserved.
+     Use of this source code is governed by a BSD-style license that can be
+     found in the LICENSE file. -->
+
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <org.chromium.chrome.browser.preferences.ChromeSwitchPreference
+        android:key="sync_switch"
+        android:summaryOn="@string/text_on"
+        android:summaryOff="@string/text_off"
+        android:defaultValue="false" />
+
+    <!--<Preference
+        android:fragment="org.chromium.chrome.browser.preferences.website.BraveSyncScreensPreference"
+        android:key="sync_picture"/>-->
+        <!--<Preference
+            android:key="sync_picture"
+            android:layout="@layout/preference_category" />-->
+
+    <!-- A toggle for allowing bookmarks to be synced. -->
+    <!--<org.chromium.chrome.browser.preferences.ChromeBaseCheckBoxPreference
+        android:key="sync_bookmarks_check_box"
+        android:title="@string/sync_bookmarks"
+        android:defaultValue="true" />-->
+
+    <!--<org.chromium.chrome.browser.preferences.ButtonPreference
+        android:key="new_to_sync_button"
+        android:title="@string/new_to_sync" />
+
+    <org.chromium.chrome.browser.preferences.ButtonPreference
+        android:key="have_existing_sync_code_button"
+        android:title="@string/brave_sync_have_existing_code" />-->
+
+    <!--
+    <org.chromium.chrome.browser.preferences.PreferenceCategoryWithButton
+       android:key="autofill_profiles"
+       android:enabled="true"
+       android:title="@string/autofill_profiles_title"
+       android:fragment="org.chromium.chrome.browser.preferences.autofill.AutofillProfileEditor"
+       android:contentDescription="@string/autofill_create_profile"
+       />
+
+    <org.chromium.chrome.browser.preferences.PreferenceCategoryWithButton
+       android:key="autofill_credit_cards"
+       android:enabled="true"
+       android:title="@string/autofill_credit_cards_title"
+       android:fragment="org.chromium.chrome.browser.preferences.autofill.AutofillLocalCardEditor"
+       android:contentDescription="@string/autofill_create_credit_card"-->
+       />
+
+</PreferenceScreen>

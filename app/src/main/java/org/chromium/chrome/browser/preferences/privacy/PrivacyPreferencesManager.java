@@ -180,7 +180,8 @@ public class PrivacyPreferencesManager implements CrashReportingPermissionManage
         // Migrate if the old preferences are at their default values.
         // (Note that for PREF_BANDWIDTH*, if the setting is default, then there is no way to tell
         // whether the user has set it.)
-        final String prefBandwidthDefault = BandwidthType.PRERENDER_ON_WIFI.title();
+        final String prefBandwidthDefault =
+                BandwidthType.title(BandwidthType.Type.PRERENDER_ON_WIFI);
         final String prefBandwidth =
                 mSharedPreferences.getString(PREF_BANDWIDTH_OLD, prefBandwidthDefault);
         boolean prefBandwidthNoCellularDefault = true;
@@ -193,24 +194,20 @@ public class PrivacyPreferencesManager implements CrashReportingPermissionManage
             // Observe PREF_BANDWIDTH on mobile network capable devices.
             if (isMobileNetworkCapable()) {
                 if (mSharedPreferences.contains(PREF_BANDWIDTH_OLD)) {
-                    BandwidthType prefetchBandwidthTypePref = BandwidthType.getBandwidthFromTitle(
-                            prefBandwidth);
-                    if (BandwidthType.NEVER_PRERENDER.equals(prefetchBandwidthTypePref)) {
+                    @BandwidthType.Type
+                    int prefetchBandwidthTypePref =
+                            BandwidthType.getBandwidthFromTitle(prefBandwidth);
+                    if (BandwidthType.Type.NEVER_PRERENDER == prefetchBandwidthTypePref) {
                         newValue = false;
-                    } else if (BandwidthType.PRERENDER_ON_WIFI.equals(prefetchBandwidthTypePref)) {
-                        newValue = true;
-                    } else if (BandwidthType.ALWAYS_PRERENDER.equals(prefetchBandwidthTypePref)) {
+                    } else if (BandwidthType.Type.PRERENDER_ON_WIFI == prefetchBandwidthTypePref
+                            || BandwidthType.Type.ALWAYS_PRERENDER == prefetchBandwidthTypePref) {
                         newValue = true;
                     }
                 }
             // Observe PREF_BANDWIDTH_NO_CELLULAR on devices without mobile network.
             } else {
                 if (mSharedPreferences.contains(PREF_BANDWIDTH_NO_CELLULAR_OLD)) {
-                    if (prefBandwidthNoCellular) {
-                        newValue = true;
-                    } else {
-                        newValue = false;
-                    }
+                    newValue = prefBandwidthNoCellular;
                 }
             }
             // Save new value in Chrome PrefService.

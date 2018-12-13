@@ -286,10 +286,9 @@ public class MediaNotificationManager {
     // responsible for hiding it afterwards.
     private static void finishStartingForegroundService(ListenerService s) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
-
         ChromeNotificationBuilder builder =
                 NotificationBuilderFactory.createChromeNotificationBuilder(
-                        true /* preferCompat */, ChannelDefinitions.CHANNEL_ID_MEDIA);
+                        true /* preferCompat */, ChannelDefinitions.ChannelId.MEDIA);
         s.startForeground(s.getNotificationId(), builder.build());
     }
 
@@ -360,6 +359,8 @@ public class MediaNotificationManager {
 
         @VisibleForTesting
         void stopListenerService() {
+            // Call stopForeground to guarantee  Android unset the foreground bit.
+            stopForeground(true /* removeNotification */);
             stopSelf();
         }
 
@@ -368,7 +369,6 @@ public class MediaNotificationManager {
             if (intent == null) return false;
 
             MediaNotificationManager manager = getManager();
-
             if (manager == null || manager.mMediaNotificationInfo == null) return false;
 
             if (intent.getAction() == null) {
@@ -392,7 +392,6 @@ public class MediaNotificationManager {
                 KeyEvent event = (KeyEvent) intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT);
                 if (event == null) return;
                 if (event.getAction() != KeyEvent.ACTION_DOWN) return;
-
                 switch (event.getKeyCode()) {
                     case KeyEvent.KEYCODE_MEDIA_PLAY:
                         manager.onPlay(
@@ -778,9 +777,7 @@ public class MediaNotificationManager {
         if (mService == service) return;
 
         mService = service;
-        updateNotification(true /*serviceStarting*/);
-        mNotificationUmaTracker.onNotificationShown(
-                NotificationUmaTracker.MEDIA, ChannelDefinitions.CHANNEL_ID_MEDIA);
+        updateNotification(true /*serviceStarting*/, true /*shouldLogNotification*/);
     }
 
     /**
@@ -841,7 +838,7 @@ public class MediaNotificationManager {
             updateNotificationBuilder();
             AppHooks.get().startForegroundService(createIntent());
         } else {
-            updateNotification(false);
+            updateNotification(false, false);
         }
     }
 
@@ -867,7 +864,8 @@ public class MediaNotificationManager {
             mMediaSession = null;
         }
         if (mService != null) {
-            getContext().stopService(createIntent());
+            mService.stopForeground(true /* removeNotification */);
+            mService.stopSelf();
         }
         mMediaNotificationInfo = null;
         mNotificationBuilder = null;
@@ -907,7 +905,7 @@ public class MediaNotificationManager {
     }
 
     @VisibleForTesting
-    void updateNotification(boolean serviceStarting) {
+    void updateNotification(boolean serviceStarting, boolean shouldLogNotification) {
         if (mService == null) return;
 
         if (mMediaNotificationInfo == null) {
@@ -942,12 +940,16 @@ public class MediaNotificationManager {
         } else if (!foregroundedService) {
             mService.startForeground(mMediaNotificationInfo.id, notification);
         }
+        if (shouldLogNotification) {
+            mNotificationUmaTracker.onNotificationShown(
+                    NotificationUmaTracker.SystemNotificationType.MEDIA, notification);
+        }
     }
 
     @VisibleForTesting
     void updateNotificationBuilder() {
         mNotificationBuilder = NotificationBuilderFactory.createChromeNotificationBuilder(
-                true /* preferCompat */, ChannelDefinitions.CHANNEL_ID_MEDIA);
+                true /* preferCompat */, ChannelDefinitions.ChannelId.MEDIA);
         setMediaStyleLayoutForNotificationBuilder(mNotificationBuilder);
 
         // TODO(zqzhang): It's weird that setShowWhen() doesn't work on K. Calling setWhen() to

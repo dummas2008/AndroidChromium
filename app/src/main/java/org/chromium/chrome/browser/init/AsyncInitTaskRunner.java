@@ -4,8 +4,7 @@
 
 package org.chromium.chrome.browser.init;
 
-import android.os.AsyncTask;
-
+import org.chromium.base.AsyncTask;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.ThreadUtils;
@@ -16,7 +15,7 @@ import org.chromium.base.library_loader.ProcessInitException;
 import org.chromium.chrome.browser.ChromeActivitySessionTracker;
 import org.chromium.chrome.browser.ChromeVersionInfo;
 import org.chromium.components.variations.firstrun.VariationsSeedFetcher;
-import org.chromium.content.browser.ChildProcessLauncherHelper;
+import org.chromium.content_public.browser.ChildProcessLauncherHelper;
 
 import java.util.concurrent.Executor;
 
@@ -38,7 +37,7 @@ public abstract class AsyncInitTaskRunner {
         return ChromeVersionInfo.isOfficialBuild();
     }
 
-    private class FetchSeedTask extends AsyncTask<Void, Void, Void> {
+    private class FetchSeedTask extends AsyncTask<Void> {
         private final String mRestrictMode;
         private final String mMilestone;
         private final String mChannel;
@@ -50,7 +49,7 @@ public abstract class AsyncInitTaskRunner {
         }
 
         @Override
-        protected Void doInBackground(Void... params) {
+        protected Void doInBackground() {
             VariationsSeedFetcher.get().fetchSeed(mRestrictMode, mMilestone, mChannel);
             return null;
         }

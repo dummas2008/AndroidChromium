@@ -6,7 +6,7 @@ package org.chromium.chrome.browser.init;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
+import org.chromium.base.AsyncTask;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -55,12 +55,12 @@ public class ShieldsConfig {
         mContext = ContextUtils.getApplicationContext();
         mSharedPreferences = ContextUtils.getAppSharedPreferences();
         nativeInit();
-        new ReadDataAsyncTask().execute();
+        new ReadDataAsyncTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
-    class ReadDataAsyncTask extends AsyncTask<Void,Void,Long> {
+    class ReadDataAsyncTask extends AsyncTask<Long> {
         @Override
-        protected Long doInBackground(Void... params) {
+        protected Long doInBackground() {
             // Read file with the settings
             try {
                 File dataPath = new File(mContext.getApplicationInfo().dataDir, SHIELDS_CONFIG_LOCALFILENAME);
@@ -187,7 +187,7 @@ public class ShieldsConfig {
             mLock.writeLock().unlock();
         }
         if (!incognitoTab) {
-            new SaveDataAsyncTask().execute();
+            new SaveDataAsyncTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
 
@@ -218,7 +218,7 @@ public class ShieldsConfig {
             mLock.writeLock().unlock();
         }
         if (!incognitoTab) {
-            new SaveDataAsyncTask().execute();
+            new SaveDataAsyncTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
 
@@ -249,7 +249,7 @@ public class ShieldsConfig {
             mLock.writeLock().unlock();
         }
         if (!incognitoTab) {
-            new SaveDataAsyncTask().execute();
+            new SaveDataAsyncTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
 
@@ -318,7 +318,7 @@ public class ShieldsConfig {
                 mLock.writeLock().unlock();
             }
             if (!incognitoTab) {
-                new SaveDataAsyncTask().execute();
+                new SaveDataAsyncTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
             }
         }
     }
@@ -350,7 +350,7 @@ public class ShieldsConfig {
             mLock.writeLock().unlock();
         }
         if (!incognitoTab) {
-            new SaveDataAsyncTask().execute();
+            new SaveDataAsyncTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
 
@@ -432,7 +432,7 @@ public class ShieldsConfig {
           return isJavaScriptEnabled(false, host);
         }
 
-        if (!PrefServiceBridge.getInstance().javaScriptEnabled()) {
+        if (!PrefServiceBridge.getInstance().isCategoryEnabled(ContentSettingsType.CONTENT_SETTINGS_TYPE_JAVASCRIPT)) {
             return false;
         }
 
@@ -491,13 +491,13 @@ public class ShieldsConfig {
             mLock.writeLock().unlock();
         }
         if (!incognitoTab) {
-            new SaveDataAsyncTask().execute();
+            new SaveDataAsyncTask().executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
         }
     }
 
-    class SaveDataAsyncTask extends AsyncTask<Void,Void,Long> {
+    class SaveDataAsyncTask extends AsyncTask<Long> {
         @Override
-        protected Long doInBackground(Void... params) {
+        protected Long doInBackground() {
             saveSettings();
 
             return null;

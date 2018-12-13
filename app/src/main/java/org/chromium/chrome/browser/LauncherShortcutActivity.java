@@ -100,12 +100,15 @@ public class LauncherShortcutActivity extends Activity {
         intent.setPackage(context.getPackageName());
         intent.setClass(context, LauncherShortcutActivity.class);
 
+        boolean useAlternativeIncognitoStrings =
+                ChromeFeatureList.isEnabled(ChromeFeatureList.INCOGNITO_STRINGS);
         ShortcutInfo shortcut =
                 new ShortcutInfo.Builder(context, DYNAMIC_OPEN_NEW_INCOGNITO_TAB_ID)
                         .setShortLabel(context.getResources().getString(
-                                R.string.prefs_private_search_engine))
-                        .setLongLabel(
-                                context.getResources().getString(R.string.brave_new_private_tab))
+                                useAlternativeIncognitoStrings
+                                        ? R.string.accessibility_tabstrip_private_identifier
+                                        : R.string.accessibility_tabstrip_incognito_identifier))
+                        .setLongLabel(context.getResources().getString(R.string.brave_new_private_tab))
                         .setIcon(Icon.createWithResource(context, R.drawable.shortcut_incognito))
                         .setIntent(intent)
                         .build();

@@ -280,11 +280,11 @@ class BraveShieldsMenuAdapter extends BaseAdapter {
                         mBraveShieldsAdsTrackingSwitch = (Switch)convertView.findViewById(R.id.brave_shields_ads_tracking_switch);
                         setupAdsTrackingSwitchClick(mBraveShieldsAdsTrackingSwitch);
                         // To make it more nice looking
-                        TextView text = (TextView) convertView.findViewById(R.id.brave_shields_ads_tracking_text);
+                        /*TextView text = (TextView) convertView.findViewById(R.id.brave_shields_ads_tracking_text);
                         if (text != null && text.getText().toString().indexOf("and") != -1) {
                             String value = text.getText().toString().replaceFirst("and", "&");
                             text.setText(value);
-                        }
+                        }*/
                     } else if (10 == position) {
                         convertView = mInflater.inflate(R.layout.brave_shields_https_upgrade_switcher, parent, false);
                         mBraveShieldsHTTPSEverywhereSwitch = (Switch)convertView.findViewById(R.id.brave_shields_https_upgrade_switch);
@@ -302,11 +302,11 @@ class BraveShieldsMenuAdapter extends BaseAdapter {
                         mBraveShieldsFingerprintsSwitch = (Switch)convertView.findViewById(R.id.brave_shields_fingerprints_blocked_switch);
                         setupFingerprintsSwitchClick(mBraveShieldsFingerprintsSwitch);
                         // To make it more nice looking
-                        TextView text = (TextView) convertView.findViewById(R.id.brave_shields_fingerprinting_blocked_text);
+                        /*TextView text = (TextView) convertView.findViewById(R.id.brave_shields_fingerprinting_blocked_text);
                         if (text != null && text.getText().toString().indexOf(" ") != -1) {
                             String value = text.getText().toString().replaceFirst(" ", "\n");
                             text.setText(value);
-                        }
+                        }*/
                     } else {
                         convertView = mInflater.inflate(R.layout.menu_item, parent, false);
                         holder.text = (TextView) convertView.findViewById(R.id.menu_item_text);

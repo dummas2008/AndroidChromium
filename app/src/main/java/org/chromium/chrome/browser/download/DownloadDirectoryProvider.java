@@ -8,11 +8,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 
+import org.chromium.base.AsyncTask;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.PathUtils;
@@ -41,9 +41,9 @@ public class DownloadDirectoryProvider {
      * The logic to retrieve directories should match
      * {@link PathUtils#getAllPrivateDownloadsDirectories}.
      */
-    private class AllDirectoriesTask extends AsyncTask<Void, Void, ArrayList<DirectoryOption>> {
+    private class AllDirectoriesTask extends AsyncTask<ArrayList<DirectoryOption>> {
         @Override
-        protected ArrayList<DirectoryOption> doInBackground(Void... params) {
+        protected ArrayList<DirectoryOption> doInBackground() {
             ArrayList<DirectoryOption> dirs = new ArrayList<>();
 
             // Retrieve default directory.
@@ -52,12 +52,13 @@ public class DownloadDirectoryProvider {
 
             // If no default directory, return an error option.
             if (defaultDirectory == null) {
-                dirs.add(new DirectoryOption(null, 0, 0, DirectoryOption.ERROR_OPTION));
+                dirs.add(new DirectoryOption(
+                        null, 0, 0, DirectoryOption.DownloadLocationDirectoryType.ERROR));
                 return dirs;
             }
 
-            DirectoryOption defaultOption =
-                    toDirectoryOption(defaultDirectory, DirectoryOption.DEFAULT_OPTION);
+            DirectoryOption defaultOption = toDirectoryOption(
+                    defaultDirectory, DirectoryOption.DownloadLocationDirectoryType.DEFAULT);
             dirs.add(defaultOption);
 
             // Retrieve additional directories, i.e. the external SD card directory.
@@ -78,7 +79,8 @@ public class DownloadDirectoryProvider {
 
                 // Skip primary storage directory.
                 if (files[i].getAbsolutePath().contains(mExternalStorageDirectory)) continue;
-                dirs.add(toDirectoryOption(files[i], DirectoryOption.ADDITIONAL_OPTION));
+                dirs.add(toDirectoryOption(
+                        files[i], DirectoryOption.DownloadLocationDirectoryType.ADDITIONAL));
             }
             return dirs;
         }

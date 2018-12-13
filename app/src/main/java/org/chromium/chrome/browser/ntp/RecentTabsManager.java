@@ -117,7 +117,7 @@ public class RecentTabsManager implements AndroidSyncSettingsObserver, SignInSta
         mForeignSessionHelper.triggerSessionSync();
         registerObservers();
 
-        InvalidationController.get(mContext).onRecentTabsPageOpened();
+        InvalidationController.get().onRecentTabsPageOpened();
     }
 
     /**
@@ -125,7 +125,7 @@ public class RecentTabsManager implements AndroidSyncSettingsObserver, SignInSta
      */
     public void destroy() {
         mIsDestroyed = true;
-        AndroidSyncSettings.unregisterObserver(mContext, this);
+        AndroidSyncSettings.unregisterObserver(this);
 
         mSignInManager.removeSignInStateObserver(this);
         mSignInManager = null;
@@ -147,7 +147,7 @@ public class RecentTabsManager implements AndroidSyncSettingsObserver, SignInSta
         mPrefs.destroy();
         mPrefs = null;
 
-        InvalidationController.get(mContext).onRecentTabsPageClosed();
+        InvalidationController.get().onRecentTabsPageClosed();
     }
 
     private void registerForForeignSessionUpdates() {
@@ -158,7 +158,7 @@ public class RecentTabsManager implements AndroidSyncSettingsObserver, SignInSta
     }
 
     private void registerObservers() {
-        AndroidSyncSettings.registerObserver(mContext, this);
+        AndroidSyncSettings.registerObserver(this);
         mSignInManager.addSignInStateObserver(this);
 
         mProfileDataCache.addObserver(this);
@@ -352,8 +352,7 @@ public class RecentTabsManager implements AndroidSyncSettingsObserver, SignInSta
             return PromoState.PROMO_SIGNIN_PERSONALIZED;
         }
 
-        if (AndroidSyncSettings.isSyncEnabled(mContext)
-                && AndroidSyncSettings.isChromeSyncEnabled(mContext)
+        if (AndroidSyncSettings.isSyncEnabled() && AndroidSyncSettings.isChromeSyncEnabled()
                 && !mForeignSessions.isEmpty()) {
             return PromoState.PROMO_NONE;
         }

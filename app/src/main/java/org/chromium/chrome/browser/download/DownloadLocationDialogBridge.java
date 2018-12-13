@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.download;
 
 import org.chromium.base.annotations.CalledByNative;
+import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.modaldialog.ModalDialogManager;
 import org.chromium.chrome.browser.modaldialog.ModalDialogView;
@@ -52,18 +53,18 @@ public class DownloadLocationDialogBridge implements ModalDialogView.Controller 
         mLocationDialog = DownloadLocationDialog.create(
                 this, activity, totalBytes, dialogType, new File(suggestedPath));
 
-        mModalDialogManager.showDialog(mLocationDialog, ModalDialogManager.APP_MODAL);
+        mModalDialogManager.showDialog(mLocationDialog, ModalDialogManager.ModalDialogType.APP);
     }
 
     @Override
     public void onClick(@ModalDialogView.ButtonType int buttonType) {
         switch (buttonType) {
-            case ModalDialogView.BUTTON_POSITIVE:
+            case ModalDialogView.ButtonType.POSITIVE:
                 handleResponses(mLocationDialog.getFileName(), mLocationDialog.getDirectoryOption(),
                         mLocationDialog.getDontShowAgain());
                 mModalDialogManager.dismissDialog(mLocationDialog);
                 break;
-            case ModalDialogView.BUTTON_NEGATIVE:
+            case ModalDialogView.ButtonType.NEGATIVE:
             // Intentional fall-through.
             default:
                 cancel();
@@ -101,7 +102,10 @@ public class DownloadLocationDialogBridge implements ModalDialogView.Controller 
         if (mNativeDownloadLocationDialogBridge != 0) {
             PrefServiceBridge.getInstance().setDownloadAndSaveFileDefaultDirectory(
                     directoryOption.location);
-            directoryOption.recordDirectoryOptionType();
+
+            RecordHistogram.recordEnumeratedHistogram(
+                    "MobileDownload.Location.Dialog.DirectoryType", directoryOption.type,
+                    DirectoryOption.DownloadLocationDirectoryType.NUM_ENTRIES);
 
             File file = new File(directoryOption.location, fileName);
             nativeOnComplete(mNativeDownloadLocationDialogBridge, file.getAbsolutePath());

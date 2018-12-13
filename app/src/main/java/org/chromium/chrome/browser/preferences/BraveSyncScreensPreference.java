@@ -20,7 +20,7 @@ import android.content.res.Configuration;
 import android.content.SharedPreferences;
 import android.hardware.Camera;
 import android.hardware.SensorManager;
-import android.os.AsyncTask;
+import org.chromium.base.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.Preference;

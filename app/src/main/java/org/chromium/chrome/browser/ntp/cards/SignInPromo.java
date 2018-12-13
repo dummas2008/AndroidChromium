@@ -103,7 +103,9 @@ public class SignInPromo extends OptionalLeaf {
 
     public static SignInPromo maybeCreatePromo(SuggestionsUiDelegate uiDelegate) {
         if (sDisablePromoForTests) return null;
-        if (ChromePreferenceManager.getInstance().getNewTabPageSigninPromoDismissed()) return null;
+        if (ChromePreferenceManager.getInstance().readBoolean(
+                    ChromePreferenceManager.NTP_SIGNIN_PROMO_DISMISSED, false))
+            return null;
         if (getSuppressionStatus()) return null;
         return new SignInPromo(uiDelegate);
     }
@@ -151,8 +153,8 @@ public class SignInPromo extends OptionalLeaf {
     }
 
     @Override
-    protected void visitOptionalItem(NodeVisitor visitor) {
-        visitor.visitSignInPromo();
+    public String describeForTesting() {
+        return "SIGN_IN_PROMO";
     }
 
     private void updateVisibility() {
@@ -170,9 +172,10 @@ public class SignInPromo extends OptionalLeaf {
         mDismissed = true;
         updateVisibility();
 
-        final @StringRes int promoHeader;
-        ChromePreferenceManager.getInstance().setNewTabPageSigninPromoDismissed(true);
-        promoHeader = mSigninPromoController.getDescriptionStringId();
+        ChromePreferenceManager.getInstance().writeBoolean(
+                ChromePreferenceManager.NTP_SIGNIN_PROMO_DISMISSED, true);
+
+        final @StringRes int promoHeader = mSigninPromoController.getDescriptionStringId();
 
         mSigninObserver.unregister();
         itemRemovedCallback.onResult(ContextUtils.getApplicationContext().getString(promoHeader));

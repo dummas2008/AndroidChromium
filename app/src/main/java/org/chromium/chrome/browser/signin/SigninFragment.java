@@ -4,15 +4,16 @@
 
 package org.chromium.chrome.browser.signin;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.support.annotation.IntDef;
 import android.support.annotation.Nullable;
 
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
+import org.chromium.chrome.R;
 import org.chromium.chrome.browser.preferences.PrefServiceBridge;
 import org.chromium.chrome.browser.preferences.PreferencesLauncher;
+import org.chromium.chrome.browser.preferences.SyncAndServicesPreferences;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -21,19 +22,21 @@ import java.lang.annotation.RetentionPolicy;
 public class SigninFragment extends SigninFragmentBase {
     private static final String TAG = "SigninFragment";
 
+    private static final String ARGUMENT_ACCESS_POINT = "SigninFragment.AccessPoint";
     private static final String ARGUMENT_PERSONALIZED_PROMO_ACTION =
             "SigninFragment.PersonalizedPromoAction";
 
-    @IntDef({PROMO_ACTION_NONE, PROMO_ACTION_WITH_DEFAULT, PROMO_ACTION_NOT_DEFAULT,
-            PROMO_ACTION_NEW_ACCOUNT})
+    @IntDef({PromoAction.NONE, PromoAction.WITH_DEFAULT, PromoAction.NOT_DEFAULT,
+            PromoAction.NEW_ACCOUNT})
     @Retention(RetentionPolicy.SOURCE)
-    public @interface PromoAction {}
+    public @interface PromoAction {
+        int NONE = 0;
+        int WITH_DEFAULT = 1;
+        int NOT_DEFAULT = 2;
+        int NEW_ACCOUNT = 3;
+    }
 
-    public static final int PROMO_ACTION_NONE = 0;
-    public static final int PROMO_ACTION_WITH_DEFAULT = 1;
-    public static final int PROMO_ACTION_NOT_DEFAULT = 2;
-    public static final int PROMO_ACTION_NEW_ACCOUNT = 3;
-
+    private @SigninAccessPoint int mSigninAccessPoint;
     private @PromoAction int mPromoAction;
 
     /**
@@ -41,7 +44,9 @@ public class SigninFragment extends SigninFragmentBase {
      * @param accessPoint The access point for starting sign-in flow.
      */
     public static Bundle createArguments(@SigninAccessPoint int accessPoint) {
-        return SigninFragmentBase.createArguments(accessPoint, null);
+        Bundle result = SigninFragmentBase.createArguments(null);
+        result.putInt(ARGUMENT_ACCESS_POINT, accessPoint);
+        return result;
     }
 
     /**
@@ -51,8 +56,9 @@ public class SigninFragment extends SigninFragmentBase {
      */
     public static Bundle createArgumentsForPromoDefaultFlow(
             @SigninAccessPoint int accessPoint, String accountName) {
-        Bundle result = SigninFragmentBase.createArguments(accessPoint, accountName);
-        result.putInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PROMO_ACTION_WITH_DEFAULT);
+        Bundle result = SigninFragmentBase.createArguments(accountName);
+        result.putInt(ARGUMENT_ACCESS_POINT, accessPoint);
+        result.putInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PromoAction.WITH_DEFAULT);
         return result;
     }
 
@@ -64,9 +70,9 @@ public class SigninFragment extends SigninFragmentBase {
      */
     public static Bundle createArgumentsForPromoChooseAccountFlow(
             @SigninAccessPoint int accessPoint, String accountName) {
-        Bundle result =
-                SigninFragmentBase.createArgumentsForChooseAccountFlow(accessPoint, accountName);
-        result.putInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PROMO_ACTION_NOT_DEFAULT);
+        Bundle result = SigninFragmentBase.createArgumentsForChooseAccountFlow(accountName);
+        result.putInt(ARGUMENT_ACCESS_POINT, accessPoint);
+        result.putInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PromoAction.NOT_DEFAULT);
         return result;
     }
 
@@ -76,8 +82,9 @@ public class SigninFragment extends SigninFragmentBase {
      * @param accessPoint The access point for starting sign-in flow.
      */
     public static Bundle createArgumentsForPromoAddAccountFlow(@SigninAccessPoint int accessPoint) {
-        Bundle result = SigninFragmentBase.createArgumentsForAddAccountFlow(accessPoint);
-        result.putInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PROMO_ACTION_NEW_ACCOUNT);
+        Bundle result = SigninFragmentBase.createArgumentsForAddAccountFlow();
+        result.putInt(ARGUMENT_ACCESS_POINT, accessPoint);
+        result.putInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PromoAction.NEW_ACCOUNT);
         return result;
     }
 
@@ -88,10 +95,20 @@ public class SigninFragment extends SigninFragmentBase {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        int accessPoint = getSigninArguments().getInt(ARGUMENT_ACCESS_POINT, -1);
+        assert accessPoint == SigninAccessPoint.AUTOFILL_DROPDOWN
+                || accessPoint == SigninAccessPoint.BOOKMARK_MANAGER
+                || accessPoint == SigninAccessPoint.NTP_CONTENT_SUGGESTIONS
+                || accessPoint == SigninAccessPoint.RECENT_TABS
+                || accessPoint == SigninAccessPoint.SETTINGS
+                || accessPoint == SigninAccessPoint.SIGNIN_PROMO
+                || accessPoint
+                        == SigninAccessPoint.START_PAGE : "invalid access point: " + accessPoint;
+        mSigninAccessPoint = accessPoint;
         mPromoAction =
-                getSigninArguments().getInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PROMO_ACTION_NONE);
+                getSigninArguments().getInt(ARGUMENT_PERSONALIZED_PROMO_ACTION, PromoAction.NONE);
 
-        SigninManager.logSigninStartAccessPoint(getSigninAccessPoint());
+        SigninManager.logSigninStartAccessPoint(mSigninAccessPoint);
         recordSigninStartedHistogramAccountInfo();
         recordSigninStartedUserAction();
     }
@@ -117,10 +134,10 @@ public class SigninFragment extends SigninFragmentBase {
         SigninManager.get().signIn(accountName, getActivity(), new SigninManager.SignInCallback() {
             @Override
             public void onSignInComplete() {
+                UnifiedConsentServiceBridge.setUnifiedConsentGiven(true);
                 if (settingsClicked) {
-                    Intent intent = PreferencesLauncher.createIntentForSettingsPage(
-                            getActivity(), AccountManagementFragment.class.getName());
-                    startActivity(intent);
+                    PreferencesLauncher.launchSettingsPage(
+                            getActivity(), SyncAndServicesPreferences.class.getName());
                 }
 
                 recordSigninCompletedHistogramAccountInfo();
@@ -135,19 +152,28 @@ public class SigninFragment extends SigninFragmentBase {
         });
     }
 
+    @Override
+    protected int getNegativeButtonTextId() {
+        return mSigninAccessPoint == SigninAccessPoint.SIGNIN_PROMO ? R.string.no_thanks
+                                                                    : R.string.cancel;
+    }
+
     private void recordSigninCompletedHistogramAccountInfo() {
         final String histogram;
         switch (mPromoAction) {
-            case PROMO_ACTION_NONE:
+            case PromoAction.NONE:
                 return;
-            case PROMO_ACTION_WITH_DEFAULT:
+            case PromoAction.WITH_DEFAULT:
                 histogram = "Signin.SigninCompletedAccessPoint.WithDefault";
                 break;
-            case PROMO_ACTION_NOT_DEFAULT:
+            case PromoAction.NOT_DEFAULT:
                 histogram = "Signin.SigninCompletedAccessPoint.NotDefault";
                 break;
-            case PROMO_ACTION_NEW_ACCOUNT:
-                histogram = "Signin.SigninCompletedAccessPoint.NewAccount";
+            case PromoAction.NEW_ACCOUNT:
+                // On Android, the promo does not have a button to add an account when there is
+                // already an account on the device. That flow goes through the NotDefault promo
+                // instead. Always use the NoExistingAccount variant.
+                histogram = "Signin.SigninCompletedAccessPoint.NewAccountNoExistingAccount";
                 break;
             default:
                 assert false : "Unexpected sign-in flow type!";
@@ -155,22 +181,25 @@ public class SigninFragment extends SigninFragmentBase {
         }
 
         RecordHistogram.recordEnumeratedHistogram(
-                histogram, getSigninAccessPoint(), SigninAccessPoint.MAX);
+                histogram, mSigninAccessPoint, SigninAccessPoint.MAX);
     }
 
     private void recordSigninStartedHistogramAccountInfo() {
         final String histogram;
         switch (mPromoAction) {
-            case PROMO_ACTION_NONE:
+            case PromoAction.NONE:
                 return;
-            case PROMO_ACTION_WITH_DEFAULT:
+            case PromoAction.WITH_DEFAULT:
                 histogram = "Signin.SigninStartedAccessPoint.WithDefault";
                 break;
-            case PROMO_ACTION_NOT_DEFAULT:
+            case PromoAction.NOT_DEFAULT:
                 histogram = "Signin.SigninStartedAccessPoint.NotDefault";
                 break;
-            case PROMO_ACTION_NEW_ACCOUNT:
-                histogram = "Signin.SigninStartedAccessPoint.NewAccount";
+            case PromoAction.NEW_ACCOUNT:
+                // On Android, the promo does not have a button to add an account when there is
+                // already an account on the device. That flow goes through the NotDefault promo
+                // instead. Always use the NoExistingAccount variant.
+                histogram = "Signin.SigninStartedAccessPoint.NewAccountNoExistingAccount";
                 break;
             default:
                 assert false : "Unexpected sign-in flow type!";
@@ -178,11 +207,11 @@ public class SigninFragment extends SigninFragmentBase {
         }
 
         RecordHistogram.recordEnumeratedHistogram(
-                histogram, getSigninAccessPoint(), SigninAccessPoint.MAX);
+                histogram, mSigninAccessPoint, SigninAccessPoint.MAX);
     }
 
     private void recordSigninStartedUserAction() {
-        switch (getSigninAccessPoint()) {
+        switch (mSigninAccessPoint) {
             case SigninAccessPoint.AUTOFILL_DROPDOWN:
                 RecordUserAction.record("Signin_Signin_FromAutofillDropdown");
                 break;

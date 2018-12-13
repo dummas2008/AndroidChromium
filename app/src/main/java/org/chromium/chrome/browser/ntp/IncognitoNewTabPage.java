@@ -13,16 +13,16 @@ import android.widget.TextView;
 
 import org.chromium.base.VisibleForTesting;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.BasicNativePage;
 import org.chromium.chrome.browser.ChromeActivity;
 import org.chromium.chrome.browser.ChromeFeatureList;
-import org.chromium.chrome.browser.NativePageHost;
 import org.chromium.chrome.browser.UrlConstants;
 import org.chromium.chrome.browser.compositor.layouts.content.InvalidationAwareThumbnailProvider;
 import org.chromium.chrome.browser.help.HelpAndFeedback;
+import org.chromium.chrome.browser.native_page.BasicNativePage;
+import org.chromium.chrome.browser.native_page.NativePageHost;
 import org.chromium.chrome.browser.ntp.IncognitoNewTabPageView.IncognitoNewTabPageManager;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.vr_shell.VrShellDelegate;
+import org.chromium.chrome.browser.vr.VrModuleProvider;
 
 /**
  * Provides functionality when the user interacts with the Incognito NTP.
@@ -62,8 +62,8 @@ public class IncognitoNewTabPage
                 // Incognito 'Learn More' either opens a new activity or a new non-incognito tab.
                 // Both is not supported in VR. Request to exit VR and if we succeed show the 'Learn
                 // More' page in 2D.
-                if (VrShellDelegate.isInVr()) {
-                    VrShellDelegate.requestToExitVrAndRunOnSuccess(
+                if (VrModuleProvider.getDelegate().isInVr()) {
+                    VrModuleProvider.getDelegate().requestToExitVrAndRunOnSuccess(
                             IncognitoNewTabPage.this ::showIncognitoLearnMore);
                     return;
                 }
@@ -83,7 +83,20 @@ public class IncognitoNewTabPage
                 (IncognitoNewTabPageView) inflater.inflate(getLayoutResource(), null);
         mIncognitoNewTabPageView.initialize(mIncognitoNewTabPageManager);
 
-        if (!useMDIncognitoNTP()) {
+        boolean useAlternateIncognitoStrings =
+                ChromeFeatureList.isEnabled(ChromeFeatureList.INCOGNITO_STRINGS);
+        if (useMDIncognitoNTP()) {
+            TextView newTabIncognitoHeader =
+                    (TextView) mIncognitoNewTabPageView.findViewById(R.id.new_tab_incognito_title);
+            newTabIncognitoHeader.setText(useAlternateIncognitoStrings
+                            ? R.string.new_tab_private_title
+                            : R.string.new_tab_otr_title);
+        } else {
+            TextView newTabIncognitoHeader =
+                    (TextView) mIncognitoNewTabPageView.findViewById(R.id.ntp_incognito_header);
+            newTabIncognitoHeader.setText(useAlternateIncognitoStrings
+                            ? R.string.new_tab_private_header
+                            : R.string.new_tab_incognito_header);
             TextView newTabIncognitoMessage = (TextView) mIncognitoNewTabPageView.findViewById(
                     R.id.brave_new_tab_private_message);
             newTabIncognitoMessage.setText(

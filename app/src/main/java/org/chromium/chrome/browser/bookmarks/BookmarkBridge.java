@@ -210,7 +210,7 @@ public class BookmarkBridge {
 
         /** @return The string to display for the item's url. */
         public String getUrlForDisplay() {
-            return UrlFormatter.formatUrlForSecurityDisplay(getUrl(), false);
+            return UrlFormatter.formatUrlForSecurityDisplayOmitScheme(getUrl());
         }
 
         /** @return Id of the bookmark item. */

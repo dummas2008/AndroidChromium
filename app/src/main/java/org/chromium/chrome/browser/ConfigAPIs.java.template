@@ -7,4 +7,5 @@ package org.chromium.chrome.browser;
 public class ConfigAPIs {
     public static final String MIXPANEL_TOKEN = "";
     public static final String URPC_API_KEY = "";
+    public static final String REFERRER_CODE = "";
 }

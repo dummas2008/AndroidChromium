@@ -44,24 +44,28 @@ public class FilterChipsProvider implements ChipsProvider, OfflineItemFilterObse
         mDelegate = delegate;
         mSource = source;
 
-        Chip noneChip = new Chip(Filters.NONE, R.string.download_manager_ui_all_downloads,
-                R.string.download_manager_ui_all_downloads, R.drawable.ic_play_arrow_white_24dp,
-                () -> onChipSelected(Filters.NONE));
-        Chip videosChip = new Chip(Filters.VIDEOS, R.string.download_manager_ui_video,
-                R.string.download_manager_ui_video, R.drawable.ic_play_arrow_white_24dp,
-                () -> onChipSelected(Filters.VIDEOS));
-        Chip musicChip = new Chip(Filters.MUSIC, R.string.download_manager_ui_audio,
-                R.string.download_manager_ui_audio, R.drawable.ic_play_arrow_white_24dp,
-                () -> onChipSelected(Filters.MUSIC));
-        Chip imagesChip = new Chip(Filters.IMAGES, R.string.download_manager_ui_images,
-                R.string.download_manager_ui_images, R.drawable.ic_play_arrow_white_24dp,
-                () -> onChipSelected(Filters.IMAGES));
-        Chip sitesChip = new Chip(Filters.SITES, R.string.download_manager_ui_pages,
-                R.string.download_manager_ui_pages, R.drawable.ic_play_arrow_white_24dp,
-                () -> onChipSelected(Filters.SITES));
-        Chip otherChip = new Chip(Filters.OTHER, R.string.download_manager_ui_other,
-                R.string.download_manager_ui_other, R.drawable.ic_play_arrow_white_24dp,
-                () -> onChipSelected(Filters.OTHER));
+        Chip noneChip =
+                new Chip(Filters.FilterType.NONE, R.string.download_manager_ui_all_downloads,
+                        R.string.download_manager_ui_all_downloads, Chip.INVALID_ICON_ID,
+                        () -> onChipSelected(Filters.FilterType.NONE));
+        Chip videosChip = new Chip(Filters.FilterType.VIDEOS, R.string.download_manager_ui_video,
+                R.string.download_manager_ui_video, R.drawable.ic_videocam_24dp,
+                () -> onChipSelected(Filters.FilterType.VIDEOS));
+        Chip musicChip = new Chip(Filters.FilterType.MUSIC, R.string.download_manager_ui_audio,
+                R.string.download_manager_ui_audio, R.drawable.ic_music_note_24dp,
+                () -> onChipSelected(Filters.FilterType.MUSIC));
+        Chip imagesChip = new Chip(Filters.FilterType.IMAGES, R.string.download_manager_ui_images,
+                R.string.download_manager_ui_images, R.drawable.ic_drive_image_24dp,
+                () -> onChipSelected(Filters.FilterType.IMAGES));
+        Chip sitesChip = new Chip(Filters.FilterType.SITES, R.string.download_manager_ui_pages,
+                R.string.download_manager_ui_pages, R.drawable.ic_globe_24dp,
+                () -> onChipSelected(Filters.FilterType.SITES));
+        Chip otherChip = new Chip(Filters.FilterType.OTHER, R.string.download_manager_ui_other,
+                R.string.download_manager_ui_other, R.drawable.ic_drive_file_24dp,
+                () -> onChipSelected(Filters.FilterType.OTHER));
+
+        // By default select the none chip.
+        noneChip.selected = true;
 
         mSortedChips.add(noneChip);
         mSortedChips.add(videosChip);
@@ -72,21 +76,6 @@ public class FilterChipsProvider implements ChipsProvider, OfflineItemFilterObse
 
         mSource.addObserver(this);
         generateFilterStates();
-    }
-
-    /**
-     * Sets whether or not a filter is enabled.
-     * @param type    The type of filter to enable.
-     * @param enabled Whether or not that filter is enabled.
-     */
-    public void setFilterEnabled(@FilterType int type, boolean enabled) {
-        int chipIndex = getChipIndex(type);
-        if (chipIndex == INVALID_INDEX) return;
-        Chip chip = mSortedChips.get(chipIndex);
-
-        if (enabled == chip.enabled) return;
-        chip.enabled = enabled;
-        for (Observer observer : mObservers) observer.onChipChanged(chipIndex, chip);
     }
 
     /**
@@ -102,9 +91,9 @@ public class FilterChipsProvider implements ChipsProvider, OfflineItemFilterObse
             if (chip.selected && willSelect) return;
             if (chip.selected == willSelect) continue;
             chip.selected = willSelect;
-
-            for (Observer observer : mObservers) observer.onChipChanged(i, chip);
         }
+
+        for (Observer observer : mObservers) observer.onChipsChanged();
     }
 
     /**
@@ -116,7 +105,7 @@ public class FilterChipsProvider implements ChipsProvider, OfflineItemFilterObse
             if (chip.selected) return chip.id;
         }
 
-        return Filters.NONE;
+        return Filters.FilterType.NONE;
     }
 
     // ChipsProvider implementation.
@@ -132,7 +121,18 @@ public class FilterChipsProvider implements ChipsProvider, OfflineItemFilterObse
 
     @Override
     public List<Chip> getChips() {
-        return mSortedChips;
+        List<Chip> visibleChips = new ArrayList<>();
+        for (Chip chip : mSortedChips) {
+            if (chip.enabled) visibleChips.add(chip);
+        }
+
+        // Remove the none chip if no other chip is visible.
+        if (visibleChips.size() == 1) {
+            assert visibleChips.get(0).id == FilterType.NONE;
+            visibleChips.clear();
+        }
+
+        return visibleChips;
     }
 
     // OfflineItemFilterObserver implementation.
@@ -156,18 +156,32 @@ public class FilterChipsProvider implements ChipsProvider, OfflineItemFilterObse
     private void generateFilterStates() {
         // Build a set of all filter types in our data set.
         Set</* @FilterType */ Integer> filters = new HashSet<>();
-        filters.add(Filters.NONE);
+        filters.add(Filters.FilterType.NONE);
         for (OfflineItem item : mSource.getItems()) {
-            filters.add(Filters.fromOfflineItem(item.filter));
+            if (item.isSuggested) {
+                // All suggested content is considered prefetched and is not included in the chips.
+                filters.add(FilterType.PREFETCHED);
+            } else {
+                filters.add(Filters.fromOfflineItem(item.filter));
+            }
         }
 
-        // Set the enabled states correctly for all filter types.
-        for (Chip chip : mSortedChips) setFilterEnabled(chip.id, filters.contains(chip.id));
+        // Set the enabled states correctly for all chips.
+        boolean chipsHaveChanged = false;
+        for (Chip chip : mSortedChips) {
+            boolean shouldEnable = filters.contains(chip.id);
+            chipsHaveChanged |= (shouldEnable != chip.enabled);
+            chip.enabled = shouldEnable;
+        }
+
+        if (chipsHaveChanged) {
+            for (Observer observer : mObservers) observer.onChipsChanged();
+        }
 
         // Validate that selection is on a valid type.
         for (Chip chip : mSortedChips) {
             if (chip.selected && !chip.enabled) {
-                onChipSelected(Filters.NONE);
+                onChipSelected(Filters.FilterType.NONE);
                 break;
             }
         }
@@ -176,13 +190,5 @@ public class FilterChipsProvider implements ChipsProvider, OfflineItemFilterObse
     private void onChipSelected(@FilterType int id) {
         setFilterSelected(id);
         mDelegate.onFilterSelected(id);
-    }
-
-    private int getChipIndex(@FilterType int type) {
-        for (int i = 0; i < mSortedChips.size(); i++) {
-            if (mSortedChips.get(i).id == type) return i;
-        }
-
-        return INVALID_INDEX;
     }
 }
