@@ -15,6 +15,10 @@ android {
         versionName "1.0"
         multiDexEnabled true
         vectorDrawables.useSupportLibrary = true
+
+        ndk {
+            abiFilters 'armeabi-v7a'    //只生成armv7的so
+        }
     }
 
     signingConfigs {
@@ -47,13 +51,16 @@ android {
         main {
             res.srcDirs = ['src/main/res']
             // 变更Java 的源文件夹，默认的文件夹 = 'src/main/java'.
-            java.srcDirs = ['src/main/java','src/main/gen', 'src/main/feed']
+            java.srcDirs = ['src/main/java','src/main/gen_chrome', 'src/main/feed']
         }
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+    packagingOptions {
+        exclude '*.properties'
     }
 }
 
