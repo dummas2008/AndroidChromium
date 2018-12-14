@@ -68,9 +68,13 @@ libraries/ui_res ---------- chromium/src/ui/android/java/res
 
 1.	Pak and dat files need to be added to the assets directory, and cannot be compressed
 2.	Aidl files added to the main/aidl
-3. The current build chromium version is 55.0.2883.99
+3. The current build chromium version is 70.0.3538.64
 4. Because some Java file is through the C compiler generated, there is the chromium/src/out directory or exist in the jars.If according to corresponding relation between the above updated version missing files, please go to the out/directory search, add corresponding files according to the namespace.There are some temporary generated XML resource file also need the out/directory on copy to the corresponding resource module.
+### Notes
+base-java.jar需要如下处理
 
+./build/android/gyp/filter_zip.py --input ./out/Default/gen/base/base_java.javac.jar --output ./base_java.jar  --exclude-globs=[\"*/R.class\",\"*/R\$*.class\",\"*/Manifest.class\",\"*/Manifest\$*.class\",\"*/NativeLibraries.class\",\"*/BuildConfig.class\"] --include-globs=[]
+否则会产生冲突
 ### Thanks
 
 The project is inspiration from the 365 browser
