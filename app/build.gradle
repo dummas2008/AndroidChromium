@@ -219,6 +219,7 @@ dependencies {
     implementation  project(':libraries_res:gvr-android-sdk')
     implementation  project(':libraries_res:customtabs_res')
     implementation project(':libraries_res:media_res')
+    implementation project(':libraries_res:autofill_res')
 
     implementation(name:'animated-vector-drawable-27.0.0',ext:'aar')
     implementation(name:'appcompat-v7-27.0.0',ext:'aar')
