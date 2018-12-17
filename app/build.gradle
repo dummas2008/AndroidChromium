@@ -51,7 +51,7 @@ android {
         main {
             res.srcDirs = ['src/main/res']
             // 变更Java 的源文件夹，默认的文件夹 = 'src/main/java'.
-            java.srcDirs = ['src/main/java','src/main/gen_chrome', 'src/main/feed']
+            java.srcDirs = ['src/main/java_','src/main/gen_chrome_', 'src/main/feed_']
         }
     }
 
@@ -190,9 +190,9 @@ dependencies {
     implementation files('libs/chrome/android/webapk/libs/common/common_java.jar')
     implementation files('libs/chrome/android/webapk/libs/client/client_java.jar')
 //    implementation files('libs/chrome/android/app_hooks_java.jar')
-//    implementation files('libs/chrome/android/chrome_public_apk.jar')
+    implementation files('libs/chrome/android/chrome_public_apk.jar')
     implementation files('libs/chrome/android/third_party/compositor_animator/compositor_animator_java.jar')
-//    implementation files('libs/chrome/android/chrome_java.jar')
+    implementation files('libs/chrome/android/chrome_java.jar')
     implementation files('libs/chrome/android/document_tab_model_info_proto_java.jar')
     implementation files('libs/chrome/android/partner_location_descriptor_proto_java.jar')
     implementation files('libs/chrome/android/class_register_java.jar')
