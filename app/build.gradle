@@ -35,6 +35,20 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            keyAlias 'browser.keystore'
+            keyPassword '123456'
+            storeFile file('./browser.keystore')
+            storePassword '123456'
+        }
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+
     dexOptions {
         jumboMode = true
         javaMaxHeapSize "8g"

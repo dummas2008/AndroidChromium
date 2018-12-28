@@ -525,7 +525,10 @@ public class ToolbarPhone extends ToolbarLayout
         getLocationBar().onNativeLibraryReady();
 
         if (!FeatureUtilities.isBottomToolbarEnabled()) enableTabSwitchingResources();
-
+        if (FeatureUtilities.isBottomToolbarEnabled()) {
+            mBraveShieldsButton.setOnClickListener(this);
+            mBraveShieldsButton.setOnLongClickListener(this);
+        }
         if (mHomeButton != null) {
             changeIconToNTPIcon(mHomeButton);
             mHomeButton.setOnClickListener(this);
