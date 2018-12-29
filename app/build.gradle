@@ -63,7 +63,7 @@ android {
     }
     sourceSets {
         main {
-            res.srcDirs = ['src/main/res']
+            res.srcDirs = ['src/main/res_browser','src/main/res']
             // 变更Java 的源文件夹，默认的文件夹 = 'src/main/java'.
             java.srcDirs = ['src/main/java','src/main/gen_chrome', 'src/main/feed']
         }
