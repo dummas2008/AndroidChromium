@@ -1575,7 +1575,7 @@ by a child template that "extends" this file.
         <!-- Providers for chrome data. -->
         <provider
             android:name="org.chromium.chrome.browser.provider.ChromeBrowserProvider"
-            android:authorities="com.brave.browser.ChromeBrowserProvider;com.brave.browser.browser;com.brave.browser;org.chromium.chrome.browser.browser"
+            android:authorities="com.brave.browser.ChromeBrowserProvider;com.brave.browser.browser;com.brave.browser"
             android:exported="true" >
             <path-permission
                 android:path="/bookmarks/search_suggest_query"
