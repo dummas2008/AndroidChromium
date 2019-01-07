@@ -317,6 +317,13 @@ public class StatsUpdater {
                     JSONObject jsonRes = new JSONObject(sb.toString());
                     downloadId = jsonRes.getString("download_id");
                     SetDownloadId(context, downloadId);
+                    if (jsonRes.has("referral_code")) {
+                        String referralCode = jsonRes.getString("referral_code");
+                        if (urpc.equals(referralCode)) {
+                            // It is partner's program, it doesn't have finalization, so we set flag to stop further checks
+                            SetIsFinalized(context, "true");
+                        }
+                    }
                     if (jsonRes.has("offer_page_url")) {
                         String offerPageUrl = jsonRes.getString("offer_page_url");
                         SetPartnerOfferPage(offerPageUrl);

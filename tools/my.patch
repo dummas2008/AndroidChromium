@@ -1,0 +1,14 @@
+--- ../app/src/main/java/org/chromium/chrome/browser/toolbar/ToolbarPhone.java	2019-01-03 19:13:38.398767187 +0800
++++ ../../brave/src/chrome/android/java/src/org/chromium/chrome/browser/toolbar/ToolbarPhone.java	2018-11-23 10:41:53.316174886 +0800
+@@ -525,7 +525,10 @@ public class ToolbarPhone extends Toolba
+         getLocationBar().onNativeLibraryReady();
+ 
+         if (!FeatureUtilities.isBottomToolbarEnabled()) enableTabSwitchingResources();
+-
++        if (FeatureUtilities.isBottomToolbarEnabled()) {
++            mBraveShieldsButton.setOnClickListener(this);
++            mBraveShieldsButton.setOnLongClickListener(this);
++        }
+         if (mHomeButton != null) {
+             changeIconToNTPIcon(mHomeButton);
+             mHomeButton.setOnClickListener(this);
