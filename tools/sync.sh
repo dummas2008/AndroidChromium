@@ -39,4 +39,13 @@ else
 	target_path="../app/src/main/feed"
 	feed_java_path=${work_dir%*/}/chrome/android/feed/dummy/java/src
 	cp -rf ${feed_java_path}/org ${target_path}
+
+    echo "copy gen srcjar"
+	target_path="../app/src/main/gen_chrome"
+	reset_dir ${target_path}
+	gen_srcjar_path=${work_dir%*/}/out/Default/gen/chrome
+    find ${gen_srcjar_path} -name "*.srcjar" -exec ./extractsrcjar.sh {} ${target_path} \;
+    find ${gen_srcjar_path} -name "product_version_resources.srcjar" -exec unzip -o -d ${target_path} {} \;
+	gen_srcjar_path=${work_dir%*/}/out/Default/gen/components
+    find ${gen_srcjar_path} -name "*.srcjar" -exec ./extractsrcjar.sh {} ${target_path} \;
 fi
