@@ -16,7 +16,7 @@ function reset_dir()
 		while((1==1))
 		do
 			split=`echo $1|cut -d "/" -f $i`
-			i++
+			((i++))
 			if [ "$split" == "" ];then
 				break
 			else
@@ -136,4 +136,44 @@ else
 	cp -rf ${work_dir%*/}/out/Default/gen/chrome/java/res/* ${target_path}
 	cp -rf ${work_dir%*/}/out/Default/gen/chrome/app/policy/android/* ${target_path}
 	unzip -o -d ${target_path} ${work_dir%*/}/out/Default/resource_zips/chrome/android/chrome_public_apk_template_resources.resources.zip																  
+
+	echo "copy components_res"
+	target_path="../libraries_res/components_res/src/main/res"
+	reset_dir ${target_path}
+	cp -rf ${work_dir%*/}/out/Default/gen/components/strings/java/res/* ${target_path}
+
+	echo "copy content_res"
+	target_path="../libraries_res/content_res/src/main/res"
+	reset_dir ${target_path}
+	cp -rf ${work_dir%*/}/content/public/android/java/res/* ${target_path}
+	cp -rf ${work_dir%*/}/out/Default/gen/content/public/android/content_strings_grd_grit_output/values* ${target_path}
+
+	echo "copy customtabs_res"
+	target_path="../libraries_res/customtabs_res/src/main/res"
+	reset_dir ${target_path}
+	cp -rf ${work_dir%*/}/third_party/custom_tabs_client/src/customtabs/res/* ${target_path}
+
+	echo "copy datausagechart_res"
+	target_path="../libraries_res/datausagechart_res/src/main/res"
+	reset_dir ${target_path}
+	cp -rf ${work_dir%*/}/third_party/android_data_chart/java/res/* ${target_path}
+
+	echo "copy gvr-android-sdk"
+	target_path="../libraries_res/gvr-android-sdk/src/main/res"
+	reset_dir ${target_path}
+	cp -rf ${work_dir%*/}/out/Default/gen/third_party/gvr-android-sdk/gvr_common_java/res/* ${target_path}
+
+	echo "copy media_res"
+	target_path="../libraries_res/media_res/src/main/res"
+	reset_dir ${target_path}
+	cp -rf ${work_dir%*/}/media/base/android/java/res/* ${target_path}
+
+	echo "copy ui_res"
+	target_path="../libraries_res/ui_res/src/main/res"
+	reset_dir ${target_path}
+	cp -rf ${work_dir%*/}/ui/android/java/res/* ${target_path}
+	cp -rf ${work_dir%*/}/out/Default/gen/ui/android/ui_strings_grd_grit_output/values* ${target_path}
+	unzip -o -d ${target_path} ${work_dir%*/}/out/Default/resource_zips/ui/android/ui_locale_string_resources.zip																  
+	
+	echo "sync complete!!!"
 fi
