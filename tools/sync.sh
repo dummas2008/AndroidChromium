@@ -174,6 +174,6 @@ else
 	cp -rf ${work_dir%*/}/ui/android/java/res/* ${target_path}
 	cp -rf ${work_dir%*/}/out/Default/gen/ui/android/ui_strings_grd_grit_output/values* ${target_path}
 	unzip -o -d ${target_path} ${work_dir%*/}/out/Default/resource_zips/ui/android/ui_locale_string_resources.zip																  
-	
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:com.brave.browser,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o build.gradle
 	echo "sync complete!!!"
 fi
