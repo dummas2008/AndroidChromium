@@ -47,6 +47,34 @@ if [ ! $1 ]; then
 else
     work_dir=$1
 
+    echo "generate app module"
+    target_path="../app"
+    reset_dir ${target_path}
+    reset_dir ${target_path}/src/main
+    cp ${work_dir%*/}/out/Default/gen/chrome/android/chrome_public_apk/AndroidManifest.xml ${target_path}/src/main
+    ./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
+    cp ./ftl/own/build.gradle ${target_path}
+    cp ./ftl/own/browser.keystore ${target_path}
+
+    echo "copy assets"
+    target_path="../app/src/main/assets"
+    reset_dir ${target_path}
+    cp ${work_dir%*/}/out/Default/chrome_100_percent.pak ${target_path}
+    cp ${work_dir%*/}/out/Default/resources.pak ${target_path}
+    cp ${work_dir%*/}/out/Default/natives_blob.bin ${target_path}
+    cp ${work_dir%*/}/net/data/ssl/certificates/urp.crt ${target_path}
+    cp ${work_dir%*/}/net/data/ssl/certificates/urp_staging.crt ${target_path}
+    cp ${work_dir%*/}/out/Default/gen/chrome/android/chrome_public_apk_unwind_assets/unwind_cfi_32 ${target_path}
+    cp ${work_dir%*/}/out/Default/gen/chrome/android/webapk/libs/runtime_library/webapk_dex_version.txt ${target_path}
+    cp ${work_dir%*/}/chrome/browser/net/blockers/data/regions.json ${target_path}
+    cp ${work_dir%*/}/niceware/browser/niceware.js ${target_path}
+    cp ${work_dir%*/}/braveSync/bundles/bundle.js ${target_path}
+    cp ${work_dir%*/}/sync/android_sync.js ${target_path}
+    cp ${work_dir%*/}/braveSync/bundles/bundle.js ${target_path}
+    cp ${work_dir%*/}/sync/android_sync_words.js ${target_path}
+    reset_dir ${target_path}/locales
+    cp ${work_dir%*/}/out/Default/locales/*.pak ${target_path}/locales
+
 	echo "copy all compile jars"
 	target_path="../app/libs"
 	reset_dir ${target_path}
@@ -99,18 +127,32 @@ else
 	reset_dir ${target_path}
 	cp -rf ${work_dir%*/}/chrome/android/java/res/* ${target_path}
 
-	echo "copy androidmedia_res"
-	target_path="../libraries_res/androidmedia_res/src/main/res"
+	echo "generate androidmedia_res module"
+	target_path="../libraries_res/androidmedia_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/third_party/android_media/java/res/* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/third_party/android_media/java/res/* ${target_path}/src/main/res
+	./fmpp/fmpp -D'packageName:org.chromium.third_party.android.media,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.third_party.android.media,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy autofill_res"
-	target_path="../libraries_res/autofill_res/src/main/res"
+
+	echo "generate autofill_res module"
+	target_path="../libraries_res/autofill_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/components/autofill/android/java/res/* ${target_path}
-	cp -rf ${work_dir%*/}/out/Default/gen/components/autofill/android/autofill_strings_grd_grit_output/values* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/components/autofill/android/java/res/* ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/out/Default/gen/components/autofill/android/autofill_strings_grd_grit_output/values* ${target_path}/src/main/res
+	./fmpp/fmpp -D'packageName:org.chromium.components.autofill,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.components.autofill,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy chrome_res"
+	echo "generate chrome_res module"
+	target_path="../libraries_res/chrome_res"
+	reset_dir ${target_path}
+	./fmpp/fmpp -D'packageName:org.chromium.chrome,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.chrome,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 	target_path="../libraries_res/chrome_res/src/main/res"
 	reset_dir ${target_path}
 	cp -rf ${work_dir%*/}/chrome/android/java/res/* ${target_path}
@@ -135,45 +177,72 @@ else
 	cp -rf ${work_dir%*/}/out/Default/gen/chrome/android/chrome_strings_grd_grit_output/values* ${target_path}
 	cp -rf ${work_dir%*/}/out/Default/gen/chrome/java/res/* ${target_path}
 	cp -rf ${work_dir%*/}/out/Default/gen/chrome/app/policy/android/* ${target_path}
-	unzip -o -d ${target_path} ${work_dir%*/}/out/Default/resource_zips/chrome/android/chrome_public_apk_template_resources.resources.zip																  
+	unzip -o -d ${target_path} ${work_dir%*/}/out/Default/resource_zips/chrome/android/chrome_public_apk_template_resources.resources.zip
 
-	echo "copy components_res"
-	target_path="../libraries_res/components_res/src/main/res"
+	echo "generate components_res module"
+	target_path="../libraries_res/components_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/out/Default/gen/components/strings/java/res/* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/out/Default/gen/components/strings/java/res/* ${target_path}/src/main/res
+	./fmpp/fmpp -D'packageName:org.chromium.components,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.components,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy content_res"
-	target_path="../libraries_res/content_res/src/main/res"
+	echo "generate content_res module"
+	target_path="../libraries_res/content_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/content/public/android/java/res/* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/content/public/android/java/res/* ${target_path}/src/main/res
 	cp -rf ${work_dir%*/}/out/Default/gen/content/public/android/content_strings_grd_grit_output/values* ${target_path}
+	./fmpp/fmpp -D'packageName:org.chromium.content,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.content,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy customtabs_res"
-	target_path="../libraries_res/customtabs_res/src/main/res"
+	echo "generate customtabs_res module"
+	target_path="../libraries_res/customtabs_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/third_party/custom_tabs_client/src/customtabs/res/* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/third_party/custom_tabs_client/src/customtabs/res/* ${target_path}/src/main/res
+	./fmpp/fmpp -D'packageName:android.support.customtabs,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:android.support.customtabs,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy datausagechart_res"
-	target_path="../libraries_res/datausagechart_res/src/main/res"
+	echo "generate datausagechart_res module"
+	target_path="../libraries_res/datausagechart_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/third_party/android_data_chart/java/res/* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/third_party/android_data_chart/java/res/* ${target_path}/src/main/res
+	./fmpp/fmpp -D'packageName:org.chromium.third_party.android,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.third_party.android,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy gvr-android-sdk"
-	target_path="../libraries_res/gvr-android-sdk/src/main/res"
+	echo "generate gvr-android-sdk module"
+	target_path="../libraries_res/gvr-android-sdk"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/out/Default/gen/third_party/gvr-android-sdk/gvr_common_java/res/* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/out/Default/gen/third_party/gvr-android-sdk/gvr_common_java/res/* ${target_path}/src/main/res
+	./fmpp/fmpp -D'packageName:com.google.vr.cardboard,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:com.google.vr.cardboard,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy media_res"
-	target_path="../libraries_res/media_res/src/main/res"
+	echo "generate media_res module"
+	target_path="../libraries_res/media_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/media/base/android/java/res/* ${target_path}
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/media/base/android/java/res/* ${target_path}/src/main/res
+	./fmpp/fmpp -D'packageName:org.chromium.media,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.media,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 
-	echo "copy ui_res"
-	target_path="../libraries_res/ui_res/src/main/res"
+	echo "generate ui_res module"
+	target_path="../libraries_res/ui_res"
 	reset_dir ${target_path}
-	cp -rf ${work_dir%*/}/ui/android/java/res/* ${target_path}
-	cp -rf ${work_dir%*/}/out/Default/gen/ui/android/ui_strings_grd_grit_output/values* ${target_path}
-	unzip -o -d ${target_path} ${work_dir%*/}/out/Default/resource_zips/ui/android/ui_locale_string_resources.zip																  
-	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:com.brave.browser,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o build.gradle
+	reset_dir ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/ui/android/java/res/* ${target_path}/src/main/res
+	cp -rf ${work_dir%*/}/out/Default/gen/ui/android/ui_strings_grd_grit_output/values* ${target_path}/src/main/res
+	unzip -o -d ${target_path}/src/main/res ${work_dir%*/}/out/Default/resource_zips/ui/android/ui_locale_string_resources.zip
+	./fmpp/fmpp -D'packageName:org.chromium.ui,isLibraryProject:true,isInstantApp:false,isBaseFeature:false' ftl/AndroidManifest.xml.ftl -o ${target_path}/src/main/AndroidManifest.xml
+	./fmpp/fmpp -D'isInstantApp:false,isLibraryProject:false,isDynamicFeature:false,generateKotlin:false,isApplicationProject:true,packageName:org.chromium.ui,isBaseFeature:false,buildApiString:28,gradlePluginVersion:3.2.1,buildToolsVersion:28.0.3,minApi:21,targetApiString:28,postprocessingSupported:false,improvedTestDeps:true' ftl/build.gradle.ftl -o ${target_path}/build.gradle
+	./fmpp/fmpp ftl/common/proguard-rules.txt.ftl -o ${target_path}/proguard-rules.pro
 	echo "sync complete!!!"
 fi
